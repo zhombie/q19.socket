@@ -5,10 +5,10 @@ package kz.q19.socket
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
-import kz.q19.domain.*
-import kz.q19.domain.webrtc.IceCandidate
-import kz.q19.domain.webrtc.SessionDescription
-import kz.q19.domain.webrtc.WebRTC
+import kz.q19.domain.model.*
+import kz.q19.domain.model.webrtc.IceCandidate
+import kz.q19.domain.model.webrtc.SessionDescription
+import kz.q19.domain.model.webrtc.WebRTC
 import kz.q19.utils.enum.findEnumBy
 import kz.q19.utils.json.getAsMutableList
 import kz.q19.utils.json.getLongOrNull
@@ -22,6 +22,10 @@ class SocketClient private constructor() {
 
     companion object {
         private const val TAG = "SocketClient"
+
+        val instance: SocketClient by lazy {
+            SocketClient()
+        }
     }
 
     private var socket: Socket? = null
@@ -77,8 +81,7 @@ class SocketClient private constructor() {
                     id = formFieldJson.getLong("id"),
                     title = formFieldJson.getStringOrNull("title"),
                     prompt = formFieldJson.getStringOrNull("prompt"),
-                    type = findEnumBy { it.value == formFieldJson.getString("type") }
-                        ?: Form.Field.Type.TEXT,
+                    type = findEnumBy { it.value == formFieldJson.getString("type") } ?: Form.Field.Type.TEXT,
                     default = formFieldJson.getStringOrNull("default"),
                     formId = formFieldJson.getLong("form_id"),
                     configs = null,
