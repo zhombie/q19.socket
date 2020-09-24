@@ -1,10 +1,11 @@
-@file:Suppress("unused", "MemberVisibilityCanBePrivate")
+@file:Suppress("unused")
 
 package kz.q19.socket
 
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import kz.q19.common.preferences.PreferencesProvider
 import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.IceCandidate
 import kz.q19.domain.model.webrtc.SessionDescription
@@ -18,22 +19,293 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-class SocketClient private constructor() {
+class SocketClient private constructor(
+    private val preferencesProvider: PreferencesProvider
+) : SocketRepository {
 
     companion object {
-        private const val TAG = "SocketClient"
+        private const val TAG = "SocketRepositoryImpl"
 
-        val instance: SocketClient by lazy {
-            SocketClient()
+        @Volatile
+        private var INSTANCE: SocketClient? = null
+
+        fun getInstance(preferencesProvider: PreferencesProvider): SocketClient {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: SocketClient(preferencesProvider).also { INSTANCE = it }
+            }
         }
     }
 
     private var socket: Socket? = null
-    private var language: String? = null
-    var listener: Listener? = null
 
-    fun setLanguage(language: String) {
-        this.language = language
+    private val language: String
+        get() {
+            var language = preferencesProvider.getLanguage()
+            if (language.isBlank()) {
+                language = Language.DEFAULT.key
+            }
+            return language
+        }
+
+    private var listener: Listener? = null
+
+    override fun connect(url: String) {
+        val options = IO.Options()
+        options.reconnection = true
+        options.reconnectionAttempts = 3
+
+        socket = IO.socket(url, options)
+
+        socket?.on(Socket.EVENT_CONNECT, onConnect)
+        socket?.on("operator_greet", onOperatorGreet)
+        socket?.on("form_init", onFormInit)
+        socket?.on("form_final", onFormFinal)
+        socket?.on("feedback", onFeedback)
+        socket?.on("user_queue", onUserQueue)
+        socket?.on("operator_typing", onOperatorTyping)
+        socket?.on("message", onMessage)
+        socket?.on("category_list", onCategoryList)
+        socket?.on(Socket.EVENT_DISCONNECT, onDisconnect)
+
+        socket?.connect()
+    }
+
+    override fun setListener(listener: Listener?) {
+        this.listener = listener
+    }
+
+    override fun initializeCall(callType: CallType, language: Language, scope: String?) {
+        when (callType) {
+            CallType.TEXT -> {
+                emit(
+                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    json {
+                        put("video", false)
+                        if (!scope.isNullOrBlank()) {
+                            put("scope", scope)
+                        }
+                        put("lang", language)
+                    }
+                )
+            }
+            CallType.AUDIO -> {
+                emit(
+                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    json {
+                        put("audio", true)
+                        if (!scope.isNullOrBlank()) {
+                            put("scope", scope)
+                        }
+                        put("lang", language)
+                    }
+                )
+            }
+            CallType.VIDEO -> {
+                emit(
+                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    json {
+                        put("video", true)
+                        if (!scope.isNullOrBlank()) {
+                            put("scope", scope)
+                        }
+                        put("lang", language)
+                    }
+                )
+            }
+        }
+    }
+
+    override fun getParentCategories() {
+        getCategories(parentId = Category.NO_PARENT_ID)
+    }
+
+    override fun getCategories(parentId: Long) {
+        emit(
+            OutgoingSocketEvent.USER_DASHBOARD,
+            json {
+                put("action", "get_category_list")
+                put("parent_id", parentId)
+                put("lang", language)
+            }
+        )
+    }
+
+    override fun getResponse(id: Long) {
+        emit(
+            OutgoingSocketEvent.USER_DASHBOARD,
+            json {
+                put("action", "get_response")
+                put("id", id)
+                put("lang", language)
+            }
+        )
+    }
+
+    override fun sendUserLanguage(language: Language) {
+        emit(
+            OutgoingSocketEvent.USER_LANGUAGE,
+            json {
+                put("language", language.key)
+            }
+        )
+    }
+
+    override fun sendUserMessage(message: String) {
+        if (message.isBlank()) {
+            return
+        }
+
+        val text = message.trim()
+
+        emit(
+            OutgoingSocketEvent.USER_MESSAGE,
+            json {
+                put("text", text)
+                put("lang", language)
+            }
+        )
+    }
+
+    override fun sendUserMediaMessage(attachmentType: Attachment.Type, url: String) {
+        emit(
+            OutgoingSocketEvent.USER_MESSAGE,
+            json {
+                put(attachmentType.key, url)
+            }
+        )
+    }
+
+    override fun sendUserFeedback(rating: Int, chatId: Long) {
+        emit(
+            OutgoingSocketEvent.USER_FEEDBACK,
+            json {
+                put("r", rating)
+                put("chat_id", chatId)
+            }
+        )
+    }
+
+    override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
+        if (webRTC == null || action == null) {
+            return
+        }
+
+        val messageObject = JSONObject()
+
+        try {
+            messageObject.put("rtc", json {
+                put("type", webRTC.type.value)
+
+                if (!webRTC.sdp.isNullOrBlank()) {
+                    put("sdp", webRTC.sdp)
+                }
+
+                if (!webRTC.id.isNullOrBlank()) {
+                    put("id", webRTC.id)
+                }
+
+                webRTC.label?.let { label ->
+                    put("label", label)
+                }
+
+                if (!webRTC.candidate.isNullOrBlank()) {
+                    put("candidate", webRTC.candidate)
+                }
+            })
+
+            messageObject.put("action", action.value)
+
+            messageObject.put("lang", language)
+        } catch (e: JSONException) {
+            e.printStackTrace()
+        }
+
+        Logger.debug(TAG, "sendMessage: $messageObject")
+
+        emit(OutgoingSocketEvent.MESSAGE, messageObject)
+    }
+
+    override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
+        emit(
+            OutgoingSocketEvent.CONFIRM_FUZZY_TASK,
+            json {
+                put("name", name)
+                put("email", email)
+                put("phone", phone)
+                put("res", '1')
+            }
+        )
+    }
+
+    override fun sendExternal(callbackData: String?) {
+        emit(
+            OutgoingSocketEvent.EXTERNAL,
+            json {
+                put("callback_data", callbackData)
+            }
+        )
+    }
+
+    override fun sendFormInitialize(formId: Long) {
+        emit(
+            OutgoingSocketEvent.FORM_INIT,
+            json {
+                put("form_id", formId)
+            }
+        )
+    }
+
+    override fun sendFormFinalize(form: Form) {
+        emit(
+            OutgoingSocketEvent.FORM_FINAL,
+            json {
+                put("form_id", form.id)
+
+                val nodes = JSONArray()
+                val fields = JSONObject()
+
+                form.fields.forEach { field ->
+                    if (field.isFlex) {
+                        nodes.put(json { put(field.type.value, field.value ?: "") })
+                    } else {
+                        val title = field.title
+                        if (!title.isNullOrBlank()) {
+                            fields.put(title, json { put(field.type.value, field.value) })
+                        }
+                    }
+                }
+
+                put("form_data", json {
+                    put("nodes", nodes)
+                    put("fields", fields)
+                })
+            }
+        )
+    }
+
+    override fun sendCancel() {
+        emit(OutgoingSocketEvent.CANCEL)
+    }
+
+    override fun sendCancelPendingCall() {
+        emit(OutgoingSocketEvent.CANCEL_PENDING_CALL)
+    }
+
+    private fun emit(outgoingSocketEvent: OutgoingSocketEvent, jsonObject: JSONObject? = null): Emitter? {
+        return socket?.emit(outgoingSocketEvent.value, jsonObject)
+    }
+    
+    override fun release() {
+//        socket?.off("call", onCall)
+        socket?.off("operator_greet", onOperatorGreet)
+        socket?.off("form_init", onFormInit)
+        socket?.off("feedback", onFeedback)
+        socket?.off("user_queue", onUserQueue)
+        socket?.off("operator_typing", onOperatorTyping)
+        socket?.off("message", onMessage)
+        socket?.off("category_list", onCategoryList)
+        socket?.disconnect()
+        socket = null
     }
 
     private val onConnect = Emitter.Listener {
@@ -56,6 +328,7 @@ class SocketClient private constructor() {
 
         // Url path
         val photo = data.optString("photo")
+
         val text = data.optString("text")
 
         listener?.onOperatorGreet(fullName, photo, text)
@@ -434,294 +707,6 @@ class SocketClient private constructor() {
 //        Logger.debug(TAG, "event [EVENT_DISCONNECT]")
 
         listener?.onDisconnect()
-    }
-
-    fun start(url: String, language: String) {
-        setLanguage(language)
-
-        val options = IO.Options()
-        options.reconnection = true
-        options.reconnectionAttempts = 3
-
-        socket = IO.socket(url, options)
-
-        socket?.on(Socket.EVENT_CONNECT, onConnect)
-        socket?.on("operator_greet", onOperatorGreet)
-        socket?.on("form_init", onFormInit)
-        socket?.on("form_final", onFormFinal)
-        socket?.on("feedback", onFeedback)
-        socket?.on("user_queue", onUserQueue)
-        socket?.on("operator_typing", onOperatorTyping)
-        socket?.on("message", onMessage)
-        socket?.on("category_list", onCategoryList)
-        socket?.on(Socket.EVENT_DISCONNECT, onDisconnect)
-
-        socket?.connect()
-    }
-
-    fun callOperator(callType: CallType, scope: String? = null, language: String? = null) {
-        when (callType) {
-            CallType.TEXT -> {
-                socket?.emit("initialize", json {
-                    put("video", false)
-                    if (!scope.isNullOrBlank()) {
-                        put("scope", scope)
-                    }
-                    put("lang", fetchLanguage(language))
-                })
-            }
-            CallType.AUDIO -> {
-                socket?.emit("initialize", json {
-                    put("audio", true)
-                    if (!scope.isNullOrBlank()) {
-                        put("scope", scope)
-                    }
-                    put("lang", fetchLanguage(language))
-                })
-            }
-            CallType.VIDEO -> {
-                socket?.emit("initialize", json {
-                    put("video", true)
-                    if (!scope.isNullOrBlank()) {
-                        put("scope", scope)
-                    }
-                    put("lang", fetchLanguage(language))
-                })
-            }
-        }
-    }
-
-    fun getBasicCategories(language: String? = null) {
-        getCategories(Category.NO_PARENT_ID, language)
-    }
-
-    fun getCategories(parentId: Long, language: String? = null) {
-//        Logger.debug(TAG, "requestCategories: $parentId")
-
-        socket?.emit("user_dashboard", json {
-            put("action", "get_category_list")
-            put("parent_id", parentId)
-            put("lang", fetchLanguage(language))
-        })
-    }
-
-    fun getResponse(id: Int, language: String? = null) {
-//        Logger.debug(TAG, "requestResponse: $id")
-
-        socket?.emit("user_dashboard", json {
-            put("action", "get_response")
-            put("id", id)
-            put("lang", fetchLanguage(language))
-        })
-    }
-
-    fun sendFeedback(rating: Int, chatId: Long) {
-        Logger.debug(TAG, "sendFeedback: $rating, $chatId")
-
-        socket?.emit("user_feedback", json {
-            put("r", rating)
-            put("chat_id", chatId)
-        })
-    }
-
-    fun sendUserMessage(message: String, language: String? = null) {
-        Logger.debug(TAG, "sendUserMessage: $message")
-
-        socket?.emit("user_message", json {
-            put("text", message)
-            put("lang", fetchLanguage(language))
-        })
-    }
-
-    fun sendUserMediaMessage(mediaType: String, url: String) {
-        socket?.emit("user_message", json {
-            put(mediaType, url)
-        })
-    }
-
-    fun sendMessage(
-        webRTC: WebRTC? = null,
-        action: Message.Action? = null,
-        language: String? = null
-    ): Emitter? {
-        if (webRTC == null || action == null) {
-            return null
-        }
-
-        val messageObject = JSONObject()
-
-        try {
-            messageObject.put("rtc", json {
-                put("type", webRTC.type.value)
-
-                if (!webRTC.sdp.isNullOrBlank()) {
-                    put("sdp", webRTC.sdp)
-                }
-
-                if (!webRTC.id.isNullOrBlank()) {
-                    put("id", webRTC.id)
-                }
-
-                webRTC.label?.let { label ->
-                    put("label", label)
-                }
-
-                if (!webRTC.candidate.isNullOrBlank()) {
-                    put("candidate", webRTC.candidate)
-                }
-            })
-
-            messageObject.put("action", action.value)
-
-            messageObject.put("lang", fetchLanguage(language))
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
-
-        Logger.debug(TAG, "sendMessage: $messageObject")
-
-        return socket?.emit("message", messageObject)
-    }
-
-    fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
-        socket?.emit("confirm_fuzzy_task", json {
-            put("name", name)
-            put("email", email)
-            put("phone", phone)
-            put("res", '1')
-        })
-    }
-
-    fun sendUserLanguage(language: String) {
-        setLanguage(language)
-
-        socket?.emit("user_language", json {
-            put("language", language)
-        })
-    }
-
-    fun sendExternal(callbackData: String?) {
-        Logger.debug(TAG, "sendExternal: $callbackData")
-
-        socket?.emit("external", json {
-            put("callback_data", callbackData)
-        })
-    }
-
-    fun sendFormInit(formId: Long) {
-        socket?.emit("form_init", json {
-            put("form_id", formId)
-        })
-    }
-
-    fun sendFormFinal(form: Form) {
-        Logger.debug(TAG, "sendFormFinal() -> form: $form")
-
-        socket?.emit("form_final", json {
-            put("form_id", form.id)
-
-            val nodes = JSONArray()
-            val fields = JSONObject()
-
-            form.fields.forEach { field ->
-                Logger.debug(TAG, "sendFormFinal() -> forEach: $field")
-
-                if (field.isFlex) {
-                    nodes.put(json { put(field.type.value, field.value ?: "") })
-                } else {
-                    val title = field.title
-                    if (!title.isNullOrBlank()) {
-                        fields.put(title, json { put(field.type.value, field.value) })
-                    }
-                }
-            }
-
-            Logger.debug(TAG, "sendFormFinal() -> nodes: $nodes")
-            Logger.debug(TAG, "sendFormFinal() -> fields: $fields")
-
-            put("form_data", json {
-                put("nodes", nodes)
-                put("fields", fields)
-            })
-        })
-    }
-
-    fun sendCancel() {
-        Logger.debug(TAG, "sendCancel")
-
-        socket?.emit("cancel", json {
-        })
-    }
-
-    fun cancelPendingCall() {
-        Logger.debug(TAG, "cancelPendingCall")
-
-        socket?.emit("cancel_pending_call")
-    }
-
-    fun release() {
-//        socket?.off("call", onCall)
-        socket?.off("operator_greet", onOperatorGreet)
-        socket?.off("form_init", onFormInit)
-        socket?.off("feedback", onFeedback)
-        socket?.off("user_queue", onUserQueue)
-        socket?.off("operator_typing", onOperatorTyping)
-        socket?.off("message", onMessage)
-        socket?.off("category_list", onCategoryList)
-        socket?.disconnect()
-        socket = null
-    }
-
-    private fun fetchLanguage(language: String?): String? {
-        return if (!language.isNullOrBlank()) {
-            language
-        } else if (!this.language.isNullOrBlank()) {
-            this.language
-        } else {
-            null
-        }
-    }
-
-    interface Listener {
-        fun onConnect()
-
-//        fun onCall(type: String, media: String, operator: String, instance: String)
-        fun onOperatorGreet(fullName: String, photoUrl: String?, text: String)
-        fun onFormInit(form: Form)
-        fun onFormFinal(text: String)
-        fun onFeedback(text: String, ratingButtons: List<RatingButton>)
-        fun onPendingUsersQueueCount(text: String? = null, count: Int)
-        fun onNoOnlineOperators(text: String): Boolean
-        fun onFuzzyTaskOffered(text: String, timestamp: Long): Boolean
-        fun onNoResultsFound(text: String, timestamp: Long): Boolean
-        fun onChatTimeout(text: String, timestamp: Long): Boolean
-        fun onOperatorDisconnected(text: String, timestamp: Long): Boolean
-        fun onUserRedirected(text: String, timestamp: Long): Boolean
-
-        fun onWebRTCCallAccept()
-        fun onWebRTCPrepare()
-        fun onWebRTCReady()
-        fun onWebRTCAnswer(sessionDescription: SessionDescription)
-        fun onWebRTCOffer(sessionDescription: SessionDescription)
-        fun onWebRTCIceCandidate(iceCandidate: IceCandidate)
-        fun onWebRTCHangup()
-
-        fun onTextMessage(
-            text: String?,
-            replyMarkup: Message.ReplyMarkup? = null,
-            attachments: List<Attachment>? = null,
-            form: Form? = null,
-            timestamp: Long
-        )
-        fun onAttachmentMessage(
-            attachment: Attachment,
-            replyMarkup: Message.ReplyMarkup? = null,
-            timestamp: Long
-        )
-
-        fun onCategories(categories: List<Category>)
-
-        fun onDisconnect()
     }
 
 }

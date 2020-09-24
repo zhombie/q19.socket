@@ -25,7 +25,8 @@ android {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
-    implementation 'com.github.zhombie:q19.domain:1.0.3'
+    implementation 'com.github.zhombie:q19.common:1.0.0'
+    implementation 'com.github.zhombie:q19.domain:1.0.4'
     implementation 'com.github.zhombie:q19.utils:1.0.4'
 
     implementation ('io.socket:socket.io-client:1.0.0') {
