@@ -228,34 +228,34 @@ class SocketClient private constructor(
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
         Logger.debug(TAG, "sendMessage() -> webRTC: $webRTC, action: $action")
 
-        if (webRTC == null || action == null) {
-            return
-        }
-
         val messageObject = JSONObject()
 
         try {
-            messageObject.put("rtc", json {
-                put("type", webRTC.type.value)
+            if (webRTC != null) {
+                messageObject.put("rtc", json {
+                    put("type", webRTC.type.value)
 
-                if (!webRTC.sdp.isNullOrBlank()) {
-                    put("sdp", webRTC.sdp)
-                }
+                    if (!webRTC.sdp.isNullOrBlank()) {
+                        put("sdp", webRTC.sdp)
+                    }
 
-                if (!webRTC.id.isNullOrBlank()) {
-                    put("id", webRTC.id)
-                }
+                    if (!webRTC.id.isNullOrBlank()) {
+                        put("id", webRTC.id)
+                    }
 
-                webRTC.label?.let { label ->
-                    put("label", label)
-                }
+                    webRTC.label?.let { label ->
+                        put("label", label)
+                    }
 
-                if (!webRTC.candidate.isNullOrBlank()) {
-                    put("candidate", webRTC.candidate)
-                }
-            })
+                    if (!webRTC.candidate.isNullOrBlank()) {
+                        put("candidate", webRTC.candidate)
+                    }
+                })
+            }
 
-            messageObject.put("action", action.value)
+            if (action != null) {
+                messageObject.put("action", action.value)
+            }
 
             messageObject.put("lang", language)
         } catch (e: JSONException) {
