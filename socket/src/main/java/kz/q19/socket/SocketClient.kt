@@ -10,7 +10,7 @@ import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.IceCandidate
 import kz.q19.domain.model.webrtc.SessionDescription
 import kz.q19.domain.model.webrtc.WebRTC
-import kz.q19.utils.enum.findEnumBy
+import kz.q19.utils.enums.findEnumBy
 import kz.q19.utils.json.getAsMutableList
 import kz.q19.utils.json.getLongOrNull
 import kz.q19.utils.json.getStringOrNull
