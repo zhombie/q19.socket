@@ -1,6 +1,6 @@
 package kz.q19.socket
 
-enum class OutgoingSocketEvent(val value: String) {
+internal enum class OutgoingSocketEvent(val value: String) {
     INITIALIZE_CALL("initialize"),
 
     USER_DASHBOARD("user_dashboard"),

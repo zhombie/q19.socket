@@ -7,9 +7,9 @@ import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import kz.q19.common.preferences.PreferencesProvider
 import kz.q19.domain.model.*
-import kz.q19.domain.model.webrtc.IceCandidate
-import kz.q19.domain.model.webrtc.SessionDescription
 import kz.q19.domain.model.webrtc.WebRTC
+import kz.q19.domain.model.webrtc.WebRTCIceCandidate
+import kz.q19.domain.model.webrtc.WebRTCSessionDescription
 import kz.q19.utils.enums.findEnumBy
 import kz.q19.utils.json.getAsMutableList
 import kz.q19.utils.json.getLongOrNull
@@ -558,7 +558,7 @@ class SocketClient private constructor(
                     val sdp = rtc.getString("sdp")
 
                     type?.let {
-                        listener?.onWebRTCOffer(SessionDescription(type, sdp))
+                        listener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.ANSWER?.value -> {
@@ -566,12 +566,12 @@ class SocketClient private constructor(
                     val sdp = rtc.getString("sdp")
 
                     type?.let {
-                        listener?.onWebRTCAnswer(SessionDescription(type, sdp))
+                        listener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.CANDIDATE?.value ->
                     listener?.onWebRTCIceCandidate(
-                        IceCandidate(
+                        WebRTCIceCandidate(
                             sdpMid = rtc.getString("id"),
                             sdpMLineIndex = rtc.getInt("label"),
                             sdp = rtc.getString("candidate")
