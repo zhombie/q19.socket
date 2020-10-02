@@ -63,6 +63,12 @@ class SocketClient private constructor(
         this.webRTCListener = webRTCListener
     }
 
+    override fun removeListeners() {
+        this.socketStateListener = null
+        this.generalListener = null
+        this.webRTCListener = null
+    }
+
     override fun connect(url: String) {
         val options = IO.Options()
         options.reconnection = true
@@ -103,6 +109,8 @@ class SocketClient private constructor(
     }
 
     override fun initializeCall(callType: CallType, language: Language, scope: String?) {
+        Logger.debug(TAG, "initializeCall() -> callType: $callType, language: $language, scope: $scope")
+
         when (callType) {
             CallType.TEXT -> {
                 emit(
@@ -170,6 +178,8 @@ class SocketClient private constructor(
     }
 
     override fun sendUserLanguage(language: Language) {
+        Logger.debug(TAG, "sendUserLanguage() -> language: $language")
+
         emit(
             OutgoingSocketEvent.USER_LANGUAGE,
             json {
@@ -179,6 +189,8 @@ class SocketClient private constructor(
     }
 
     override fun sendUserMessage(message: String) {
+        Logger.debug(TAG, "sendUserMessage() -> message: $message")
+
         if (message.isBlank()) {
             return
         }
@@ -214,6 +226,8 @@ class SocketClient private constructor(
     }
 
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
+        Logger.debug(TAG, "sendMessage() -> webRTC: $webRTC, action: $action")
+
         if (webRTC == null || action == null) {
             return
         }
@@ -246,9 +260,10 @@ class SocketClient private constructor(
             messageObject.put("lang", language)
         } catch (e: JSONException) {
             e.printStackTrace()
+            Logger.error(TAG, e)
         }
 
-        Logger.debug(TAG, "sendMessage: $messageObject")
+        Logger.debug(TAG, "sendMessage() -> messageObject: $messageObject")
 
         emit(OutgoingSocketEvent.MESSAGE, messageObject)
     }

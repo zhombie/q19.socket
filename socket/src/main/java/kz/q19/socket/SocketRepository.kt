@@ -7,6 +7,7 @@ interface SocketRepository {
     fun setSocketStateListener(socketStateListener: SocketStateListener? = null)
     fun setGeneralListener(generalListener: GeneralListener? = null)
     fun setWebRTCListener(webRTCListener: WebRTCListener? = null)
+    fun removeListeners()
 
     fun connect(url: String)
     fun release()
