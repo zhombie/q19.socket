@@ -4,9 +4,12 @@ import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
 
 interface SocketRepository {
-    fun connect(url: String)
+    fun setSocketStateListener(socketStateListener: SocketStateListener? = null)
+    fun setGeneralListener(generalListener: GeneralListener? = null)
+    fun setWebRTCListener(webRTCListener: WebRTCListener? = null)
 
-    fun setListener(listener: Listener? = null)
+    fun connect(url: String)
+    fun release()
 
     fun initializeCall(callType: CallType, language: Language, scope: String? = null)
 
@@ -33,6 +36,4 @@ interface SocketRepository {
     fun sendCancel()
 
     fun sendCancelPendingCall()
-
-    fun release()
 }

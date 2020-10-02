@@ -47,7 +47,21 @@ class SocketClient private constructor(
             return language
         }
 
-    private var listener: Listener? = null
+    private var socketStateListener: SocketStateListener? = null
+    private var generalListener: GeneralListener? = null
+    private var webRTCListener: WebRTCListener? = null
+
+    override fun setSocketStateListener(socketStateListener: SocketStateListener?) {
+        this.socketStateListener = socketStateListener
+    }
+
+    override fun setGeneralListener(generalListener: GeneralListener?) {
+        this.generalListener = generalListener
+    }
+
+    override fun setWebRTCListener(webRTCListener: WebRTCListener?) {
+        this.webRTCListener = webRTCListener
+    }
 
     override fun connect(url: String) {
         val options = IO.Options()
@@ -56,22 +70,36 @@ class SocketClient private constructor(
 
         socket = IO.socket(url, options)
 
-        socket?.on(Socket.EVENT_CONNECT, onConnect)
-        socket?.on("operator_greet", onOperatorGreet)
-        socket?.on("form_init", onFormInit)
-        socket?.on("form_final", onFormFinal)
-        socket?.on("feedback", onFeedback)
-        socket?.on("user_queue", onUserQueue)
-        socket?.on("operator_typing", onOperatorTyping)
-        socket?.on("message", onMessage)
-        socket?.on("category_list", onCategoryList)
-        socket?.on(Socket.EVENT_DISCONNECT, onDisconnect)
+        socket?.on(Socket.EVENT_CONNECT, onConnectListener)
+//        socket?.on(IncomingSocketEvent.CALL, onCallListener)
+        socket?.on(IncomingSocketEvent.OPERATOR_GREET, onOperatorGreetListener)
+        socket?.on(IncomingSocketEvent.FORM_INIT, onFormInitListener)
+        socket?.on(IncomingSocketEvent.FORM_FINAL, onFormFinalListener)
+        socket?.on(IncomingSocketEvent.FEEDBACK, onFeedbackListener)
+        socket?.on(IncomingSocketEvent.USER_QUEUE, onUserQueueListener)
+        socket?.on(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
+        socket?.on(IncomingSocketEvent.MESSAGE, onMessageListener)
+        socket?.on(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
+        socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
         socket?.connect()
     }
 
-    override fun setListener(listener: Listener?) {
-        this.listener = listener
+    override fun release() {
+//        socket?.off(IncomingSocketEvent.CALL, onCallListener)
+//        socket?.off(Socket.EVENT_CONNECT, onConnectListener)
+//        socket?.off(IncomingSocketEvent.OPERATOR_GREET, onOperatorGreetListener)
+//        socket?.off(IncomingSocketEvent.FORM_INIT, onFormInitListener)
+//        socket?.off(IncomingSocketEvent.FORM_FINAL, onFormInitListener)
+//        socket?.off(IncomingSocketEvent.FEEDBACK, onFeedbackListener)
+//        socket?.off(IncomingSocketEvent.USER_QUEUE, onUserQueueListener)
+//        socket?.off(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
+//        socket?.off(IncomingSocketEvent.MESSAGE, onMessageListener)
+//        socket?.off(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
+//        socket?.off(Socket.EVENT_DISCONNECT, onDisconnectListener)
+        socket?.off()
+        socket?.disconnect()
+        socket = null
     }
 
     override fun initializeCall(callType: CallType, language: Language, scope: String?) {
@@ -295,26 +323,13 @@ class SocketClient private constructor(
         return socket?.emit(outgoingSocketEvent.value, jsonObject)
     }
     
-    override fun release() {
-//        socket?.off("call", onCall)
-        socket?.off("operator_greet", onOperatorGreet)
-        socket?.off("form_init", onFormInit)
-        socket?.off("feedback", onFeedback)
-        socket?.off("user_queue", onUserQueue)
-        socket?.off("operator_typing", onOperatorTyping)
-        socket?.off("message", onMessage)
-        socket?.off("category_list", onCategoryList)
-        socket?.disconnect()
-        socket = null
-    }
-
-    private val onConnect = Emitter.Listener {
+    private val onConnectListener = Emitter.Listener {
         Logger.debug(TAG, "event [EVENT_CONNECT]")
 
-        listener?.onConnect()
+        socketStateListener?.onConnect()
     }
 
-    private val onOperatorGreet = Emitter.Listener { args ->
+    private val onOperatorGreetListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [OPERATOR_GREET]: $args")
 
         if (args.size != 1) return@Listener
@@ -331,10 +346,10 @@ class SocketClient private constructor(
 
         val text = data.optString("text")
 
-        listener?.onOperatorGreet(fullName, photo, text)
+        generalListener?.onOperatorGreet(fullName, photo, text)
     }
 
-    private val onFormInit = Emitter.Listener { args ->
+    private val onFormInitListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [FORM_INIT]: $args")
 
         if (args.size != 1) return@Listener
@@ -372,10 +387,10 @@ class SocketClient private constructor(
             fields = fields
         )
 
-        listener?.onFormInit(form)
+        generalListener?.onFormInit(form)
     }
 
-    private val onFormFinal = Emitter.Listener { args ->
+    private val onFormFinalListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [FORM_FINAL]: $args")
 
         if (args.size != 1) return@Listener
@@ -389,14 +404,14 @@ class SocketClient private constructor(
 //        val message = data.getStringOrNull("message")
 //        val success = data.optBoolean("success", false)
 
-        listener?.onFormFinal(text = trackId ?: "")
+        generalListener?.onFormFinal(text = trackId ?: "")
     }
 
-    private val onOperatorTyping = Emitter.Listener {
+    private val onOperatorTypingListener = Emitter.Listener {
         Logger.debug(TAG, "event [OPERATOR_TYPING]")
     }
 
-    private val onFeedback = Emitter.Listener { args ->
+    private val onFeedbackListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [FEEDBACK]: $args")
 
         if (args.size != 1) return@Listener
@@ -422,11 +437,11 @@ class SocketClient private constructor(
                 )
             }
 
-            listener?.onFeedback(text, ratingButtons)
+            generalListener?.onFeedback(text, ratingButtons)
         }
     }
 
-    private val onUserQueue = Emitter.Listener { args ->
+    private val onUserQueueListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [USER_QUEUE]: $args")
 
         if (args.size != 1) return@Listener
@@ -438,10 +453,10 @@ class SocketClient private constructor(
         val count = data.getInt("count")
 //            val channel = userQueue.getInt("channel")
 
-        listener?.onPendingUsersQueueCount(count = count)
+        generalListener?.onPendingUsersQueueCount(count = count)
     }
 
-    private val onMessage = Emitter.Listener { args ->
+    private val onMessageListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [MESSAGE]: $args")
 
         if (args.size != 1) return@Listener
@@ -510,32 +525,32 @@ class SocketClient private constructor(
         }
 
         if (noResults && from.isNullOrBlank() && sender.isNullOrBlank() && action == null && !text.isNullOrBlank()) {
-            val isHandled = listener?.onNoResultsFound(text, time)
+            val isHandled = generalListener?.onNoResultsFound(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (fuzzyTask && !text.isNullOrBlank()) {
-            val isHandled = listener?.onFuzzyTaskOffered(text, time)
+            val isHandled = generalListener?.onFuzzyTaskOffered(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (noOnline && !text.isNullOrBlank()) {
-            val isHandled = listener?.onNoOnlineOperators(text)
+            val isHandled = generalListener?.onNoOnlineOperators(text)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.CHAT_TIMEOUT && !text.isNullOrBlank()) {
-            val isHandled = listener?.onChatTimeout(text, time)
+            val isHandled = generalListener?.onChatTimeout(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.OPERATOR_DISCONNECT && !text.isNullOrBlank()) {
-            val isHandled = listener?.onOperatorDisconnected(text, time)
+            val isHandled = generalListener?.onOperatorDisconnected(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.REDIRECT && !text.isNullOrBlank()) {
-            val isHandled = listener?.onUserRedirected(text, time)
+            val isHandled = generalListener?.onUserRedirected(text, time)
             if (isHandled == true) return@Listener
         }
 
@@ -543,22 +558,22 @@ class SocketClient private constructor(
             when (rtc.getStringOrNull("type")) {
                 WebRTC.Type.START?.value -> {
                     when (action) {
-                        Message.Action.CALL_ACCEPT -> listener?.onWebRTCCallAccept()
-                        Message.Action.CALL_REDIRECT -> listener?.onWebRTCCallAccept()
+                        Message.Action.CALL_ACCEPT -> webRTCListener?.onWebRTCCallAccept()
+                        Message.Action.CALL_REDIRECT -> webRTCListener?.onWebRTCCallAccept()
                         Message.Action.CALL_REDIAL -> {
                         }
                         else -> {
                         }
                     }
                 }
-                WebRTC.Type.PREPARE?.value -> listener?.onWebRTCPrepare()
-                WebRTC.Type.READY?.value -> listener?.onWebRTCReady()
+                WebRTC.Type.PREPARE?.value -> webRTCListener?.onWebRTCPrepare()
+                WebRTC.Type.READY?.value -> webRTCListener?.onWebRTCReady()
                 WebRTC.Type.OFFER?.value -> {
                     val type = WebRTC.Type.by(rtc.getString("type"))
                     val sdp = rtc.getString("sdp")
 
                     type?.let {
-                        listener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
+                        webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.ANSWER?.value -> {
@@ -566,26 +581,26 @@ class SocketClient private constructor(
                     val sdp = rtc.getString("sdp")
 
                     type?.let {
-                        listener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
+                        webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.CANDIDATE?.value ->
-                    listener?.onWebRTCIceCandidate(
+                    webRTCListener?.onWebRTCIceCandidate(
                         WebRTCIceCandidate(
                             sdpMid = rtc.getString("id"),
                             sdpMLineIndex = rtc.getInt("label"),
                             sdp = rtc.getString("candidate")
                         )
                     )
-                WebRTC.Type.HANGUP?.value -> listener?.onWebRTCHangup()
+                WebRTC.Type.HANGUP?.value -> webRTCListener?.onWebRTCHangup()
             }
             return@Listener
         }
 
         if (!data.isNull("queued")) {
             val queued = data.optInt("queued")
-            listener?.onPendingUsersQueueCount(text, queued)
-            listener?.onTextMessage(
+            generalListener?.onPendingUsersQueueCount(text, queued)
+            generalListener?.onTextMessage(
                 text = text,
                 replyMarkup = replyMarkup,
                 form = form,
@@ -606,7 +621,7 @@ class SocketClient private constructor(
                     )
                 }
 
-                listener?.onTextMessage(
+                generalListener?.onTextMessage(
                     text = text,
                     replyMarkup = replyMarkup,
                     attachments = attachments,
@@ -614,7 +629,7 @@ class SocketClient private constructor(
                     timestamp = time
                 )
             } else {
-                listener?.onTextMessage(
+                generalListener?.onTextMessage(
                     text = text,
                     replyMarkup = replyMarkup,
                     form = form,
@@ -631,7 +646,7 @@ class SocketClient private constructor(
             val ext = media.getStringOrNull("ext")
 
             if (!image.isNullOrBlank() && !ext.isNullOrBlank()) {
-                listener?.onAttachmentMessage(
+                generalListener?.onAttachmentMessage(
                     attachment = Attachment(
                         urlPath = image,
                         title = name,
@@ -643,7 +658,7 @@ class SocketClient private constructor(
             }
 
             if (!audio.isNullOrBlank() && !ext.isNullOrBlank()) {
-                listener?.onAttachmentMessage(
+                generalListener?.onAttachmentMessage(
                     attachment = Attachment(
                         urlPath = audio,
                         title = name,
@@ -655,7 +670,7 @@ class SocketClient private constructor(
             }
 
             if (!file.isNullOrBlank() && !ext.isNullOrBlank()) {
-                listener?.onAttachmentMessage(
+                generalListener?.onAttachmentMessage(
                     attachment = Attachment(
                         urlPath = file,
                         title = name,
@@ -668,7 +683,7 @@ class SocketClient private constructor(
         }
     }
 
-    private val onCategoryList = Emitter.Listener { args ->
+    private val onCategoryListListener = Emitter.Listener { args ->
 //        Logger.debug(TAG, "event [CATEGORY_LIST]")
 
         if (args.size != 1) return@Listener
@@ -700,13 +715,13 @@ class SocketClient private constructor(
             }
         }
 
-        listener?.onCategories(currentCategories.sortedBy { it.config?.order })
+        generalListener?.onCategories(currentCategories.sortedBy { it.config?.order })
     }
 
-    private val onDisconnect = Emitter.Listener {
+    private val onDisconnectListener = Emitter.Listener {
 //        Logger.debug(TAG, "event [EVENT_DISCONNECT]")
 
-        listener?.onDisconnect()
+        socketStateListener?.onDisconnect()
     }
 
 }

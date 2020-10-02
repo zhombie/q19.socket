@@ -3,12 +3,12 @@ package kz.q19.socket
 import kz.q19.domain.model.webrtc.WebRTCIceCandidate
 import kz.q19.domain.model.webrtc.WebRTCSessionDescription
 
-abstract class WebRTCListener {
-    abstract fun onWebRTCCallAccept()
-    abstract fun onWebRTCPrepare()
-    abstract fun onWebRTCReady()
-    abstract fun onWebRTCAnswer(webRTCSessionDescription: WebRTCSessionDescription)
-    abstract fun onWebRTCOffer(webRTCSessionDescription: WebRTCSessionDescription)
-    abstract fun onWebRTCIceCandidate(webRTCIceCandidate: WebRTCIceCandidate)
-    abstract fun onWebRTCHangup()
+interface WebRTCListener {
+    fun onWebRTCCallAccept()
+    fun onWebRTCPrepare()
+    fun onWebRTCReady()
+    fun onWebRTCAnswer(webRTCSessionDescription: WebRTCSessionDescription)
+    fun onWebRTCOffer(webRTCSessionDescription: WebRTCSessionDescription)
+    fun onWebRTCIceCandidate(webRTCIceCandidate: WebRTCIceCandidate)
+    fun onWebRTCHangup()
 }
