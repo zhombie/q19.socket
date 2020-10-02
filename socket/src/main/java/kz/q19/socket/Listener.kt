@@ -2,36 +2,35 @@ package kz.q19.socket
 
 import kz.q19.domain.model.*
 
-interface Listener : WebRTCListener {
-    fun onConnect()
+abstract class Listener : WebRTCListener() {
+    abstract fun onConnect()
+    abstract fun onDisconnect()
 
-//    fun onCall(type: String, media: String, operator: String, instance: String)
-    fun onOperatorGreet(fullName: String, photoUrl: String?, text: String)
-    fun onFormInit(form: Form)
-    fun onFormFinal(text: String)
-    fun onFeedback(text: String, ratingButtons: List<RatingButton>)
-    fun onPendingUsersQueueCount(text: String? = null, count: Int)
-    fun onNoOnlineOperators(text: String): Boolean
-    fun onFuzzyTaskOffered(text: String, timestamp: Long): Boolean
-    fun onNoResultsFound(text: String, timestamp: Long): Boolean
-    fun onChatTimeout(text: String, timestamp: Long): Boolean
-    fun onOperatorDisconnected(text: String, timestamp: Long): Boolean
-    fun onUserRedirected(text: String, timestamp: Long): Boolean
+//    abstract fun onCall(type: String, media: String, operator: String, instance: String)
+    abstract fun onOperatorGreet(fullName: String, photoUrl: String?, text: String)
+    abstract fun onFormInit(form: Form)
+    abstract fun onFormFinal(text: String)
+    abstract fun onFeedback(text: String, ratingButtons: List<RatingButton>)
+    abstract fun onPendingUsersQueueCount(text: String? = null, count: Int)
+    abstract fun onNoOnlineOperators(text: String): Boolean
+    abstract fun onFuzzyTaskOffered(text: String, timestamp: Long): Boolean
+    abstract fun onNoResultsFound(text: String, timestamp: Long): Boolean
+    abstract fun onChatTimeout(text: String, timestamp: Long): Boolean
+    abstract fun onOperatorDisconnected(text: String, timestamp: Long): Boolean
+    abstract fun onUserRedirected(text: String, timestamp: Long): Boolean
 
-    fun onTextMessage(
+    abstract fun onTextMessage(
         text: String?,
         replyMarkup: Message.ReplyMarkup? = null,
         attachments: List<Attachment>? = null,
         form: Form? = null,
         timestamp: Long
     )
-    fun onAttachmentMessage(
+    abstract fun onAttachmentMessage(
         attachment: Attachment,
         replyMarkup: Message.ReplyMarkup? = null,
         timestamp: Long
     )
 
-    fun onCategories(categories: List<Category>)
-
-    fun onDisconnect()
+    abstract fun onCategories(categories: List<Category>)
 }
