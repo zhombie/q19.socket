@@ -615,15 +615,18 @@ class SocketClient private constructor(
         if (!data.isNull("queued")) {
             val queued = data.optInt("queued")
             generalListener?.onPendingUsersQueueCount(text, queued)
-            generalListener?.onTextMessage(
-                text = text,
-                replyMarkup = replyMarkup,
-                form = form,
-                timestamp = time
+            generalListener?.onMessage(
+                message = Message(
+                    type = Message.Type.INCOMING,
+                    text = text,
+                    replyMarkup = replyMarkup,
+                    form = form,
+                    timestamp = time
+                )
             )
         } else {
+            val attachments = mutableListOf<Attachment>()
             if (attachmentsJson != null) {
-                val attachments = mutableListOf<Attachment>()
                 for (i in 0 until attachmentsJson.length()) {
                     val attachment = attachmentsJson[i] as? JSONObject?
                     attachments.add(
@@ -635,66 +638,58 @@ class SocketClient private constructor(
                         )
                     )
                 }
-
-                generalListener?.onTextMessage(
+            }
+            generalListener?.onMessage(
+                message = Message(
+                    type = Message.Type.INCOMING,
                     text = text,
                     replyMarkup = replyMarkup,
                     attachments = attachments,
                     form = form,
                     timestamp = time
                 )
-            } else {
-                generalListener?.onTextMessage(
-                    text = text,
-                    replyMarkup = replyMarkup,
-                    form = form,
-                    timestamp = time
-                )
-            }
+            )
         }
 
         if (media != null) {
             val image = media.getStringOrNull("image")
             val audio = media.getStringOrNull("audio")
+            val video = media.getStringOrNull("video")
             val file = media.getStringOrNull("file")
             val name = media.getStringOrNull("name")
             val ext = media.getStringOrNull("ext")
 
-            if (!image.isNullOrBlank() && !ext.isNullOrBlank()) {
-                generalListener?.onAttachmentMessage(
-                    attachment = Attachment(
-                        urlPath = image,
-                        title = name,
-                        extension = findEnumBy { it.value == ext }
-                    ),
-                    replyMarkup = replyMarkup,
-                    timestamp = time
-                )
+            val pair = if (!ext.isNullOrBlank()) {
+                if (!image.isNullOrBlank()) {
+                    Attachment.Type.IMAGE to image
+                } else if (!audio.isNullOrBlank()) {
+                    Attachment.Type.AUDIO to audio
+                } else if (!video.isNullOrBlank()) {
+                    Attachment.Type.VIDEO to video
+                } else if (!file.isNullOrBlank()) {
+                    Attachment.Type.FILE to file
+                } else {
+                    null
+                }
+            } else {
+                null
             }
 
-            if (!audio.isNullOrBlank() && !ext.isNullOrBlank()) {
-                generalListener?.onAttachmentMessage(
-                    attachment = Attachment(
-                        urlPath = audio,
-                        title = name,
-                        extension = findEnumBy { it.value == ext }
-                    ),
+            generalListener?.onMessage(
+                message = Message(
+                    type = Message.Type.INCOMING,
+                    text = text,
                     replyMarkup = replyMarkup,
+                    attachments = listOf(Attachment(
+                        title = name,
+                        extension = findEnumBy { it.value == ext },
+                        urlPath = pair?.second,
+                        type = pair?.first
+                    )),
+                    form = form,
                     timestamp = time
                 )
-            }
-
-            if (!file.isNullOrBlank() && !ext.isNullOrBlank()) {
-                generalListener?.onAttachmentMessage(
-                    attachment = Attachment(
-                        urlPath = file,
-                        title = name,
-                        extension = findEnumBy { it.value == ext }
-                    ),
-                    replyMarkup = replyMarkup,
-                    timestamp = time
-                )
-            }
+            )
         }
     }
 

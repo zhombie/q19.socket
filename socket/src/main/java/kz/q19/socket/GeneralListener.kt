@@ -16,18 +16,7 @@ interface GeneralListener {
     fun onOperatorDisconnected(text: String, timestamp: Long): Boolean
     fun onUserRedirected(text: String, timestamp: Long): Boolean
 
-    fun onTextMessage(
-        text: String?,
-        replyMarkup: Message.ReplyMarkup? = null,
-        attachments: List<Attachment>? = null,
-        form: Form? = null,
-        timestamp: Long
-    )
-    fun onAttachmentMessage(
-        attachment: Attachment,
-        replyMarkup: Message.ReplyMarkup? = null,
-        timestamp: Long
-    )
+    fun onMessage(message: Message)
 
     fun onCategories(categories: List<Category>)
 }
