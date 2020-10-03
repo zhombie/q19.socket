@@ -480,6 +480,7 @@ class SocketClient private constructor(
 
         Logger.debug(TAG, "[MESSAGE] data: $data")
 
+        val id = data.getStringOrNull("id")?.trim()
         val text = data.getStringOrNull("text")?.trim()
         val noOnline = data.optBoolean("no_online")
         val noResults = data.optBoolean("no_results")
@@ -573,21 +574,25 @@ class SocketClient private constructor(
             when (rtc.getStringOrNull("type")) {
                 WebRTC.Type.START?.value -> {
                     when (action) {
-                        Message.Action.CALL_ACCEPT -> webRTCListener?.onWebRTCCallAccept()
-                        Message.Action.CALL_REDIRECT -> webRTCListener?.onWebRTCCallAccept()
+                        Message.Action.CALL_ACCEPT ->
+                            webRTCListener?.onWebRTCCallAccept()
+                        Message.Action.CALL_REDIRECT ->
+                            webRTCListener?.onWebRTCCallAccept()
                         Message.Action.CALL_REDIAL -> {
                         }
                         else -> {
                         }
                     }
                 }
-                WebRTC.Type.PREPARE?.value -> webRTCListener?.onWebRTCPrepare()
-                WebRTC.Type.READY?.value -> webRTCListener?.onWebRTCReady()
+                WebRTC.Type.PREPARE?.value ->
+                    webRTCListener?.onWebRTCPrepare()
+                WebRTC.Type.READY?.value ->
+                    webRTCListener?.onWebRTCReady()
                 WebRTC.Type.OFFER?.value -> {
                     val type = WebRTC.Type.by(rtc.getString("type"))
                     val sdp = rtc.getString("sdp")
 
-                    type?.let {
+                    if (type != null) {
                         webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
                     }
                 }
@@ -595,7 +600,7 @@ class SocketClient private constructor(
                     val type = WebRTC.Type.by(rtc.getString("type"))
                     val sdp = rtc.getString("sdp")
 
-                    type?.let {
+                    if (type != null) {
                         webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
                     }
                 }
@@ -607,7 +612,8 @@ class SocketClient private constructor(
                             sdp = rtc.getString("candidate")
                         )
                     )
-                WebRTC.Type.HANGUP?.value -> webRTCListener?.onWebRTCHangup()
+                WebRTC.Type.HANGUP?.value ->
+                    webRTCListener?.onWebRTCHangup()
             }
             return@Listener
         }
@@ -615,40 +621,22 @@ class SocketClient private constructor(
         if (!data.isNull("queued")) {
             val queued = data.optInt("queued")
             generalListener?.onPendingUsersQueueCount(text, queued)
-            generalListener?.onMessage(
-                message = Message(
-                    type = Message.Type.INCOMING,
-                    text = text,
-                    replyMarkup = replyMarkup,
-                    form = form,
-                    timestamp = time
-                )
-            )
-        } else {
-            val attachments = mutableListOf<Attachment>()
-            if (attachmentsJson != null) {
-                for (i in 0 until attachmentsJson.length()) {
-                    val attachment = attachmentsJson[i] as? JSONObject?
-                    attachments.add(
-                        Attachment(
-                            title = attachment?.getStringOrNull("title"),
-                            extension = findEnumBy { it.value == attachment?.getStringOrNull("ext") },
-                            type = findEnumBy { it.key == attachment?.getStringOrNull("type") },
-                            urlPath = attachment?.getStringOrNull("url")
-                        )
+        }
+
+        val attachments = mutableListOf<Attachment>()
+
+        if (attachmentsJson != null) {
+            for (i in 0 until attachmentsJson.length()) {
+                val attachment = attachmentsJson[i] as? JSONObject?
+                attachments.add(
+                    Attachment(
+                        title = attachment?.getStringOrNull("title"),
+                        extension = findEnumBy { it.value == attachment?.getStringOrNull("ext") },
+                        type = findEnumBy { it.key == attachment?.getStringOrNull("type") },
+                        urlPath = attachment?.getStringOrNull("url")
                     )
-                }
-            }
-            generalListener?.onMessage(
-                message = Message(
-                    type = Message.Type.INCOMING,
-                    text = text,
-                    replyMarkup = replyMarkup,
-                    attachments = attachments,
-                    form = form,
-                    timestamp = time
                 )
-            )
+            }
         }
 
         if (media != null) {
@@ -675,22 +663,27 @@ class SocketClient private constructor(
                 null
             }
 
-            generalListener?.onMessage(
-                message = Message(
-                    type = Message.Type.INCOMING,
-                    text = text,
-                    replyMarkup = replyMarkup,
-                    attachments = listOf(Attachment(
-                        title = name,
-                        extension = findEnumBy { it.value == ext },
-                        urlPath = pair?.second,
-                        type = pair?.first
-                    )),
-                    form = form,
-                    timestamp = time
+            attachments.add(
+                Attachment(
+                    title = name,
+                    extension = findEnumBy { it.value == ext },
+                    urlPath = pair?.second,
+                    type = pair?.first
                 )
             )
         }
+
+        generalListener?.onMessage(
+            message = Message(
+                id = id,
+                type = Message.Type.INCOMING,
+                text = text,
+                replyMarkup = replyMarkup,
+                attachments = attachments,
+                form = form,
+                timestamp = time
+            )
+        )
     }
 
     private val onCategoryListListener = Emitter.Listener { args ->
