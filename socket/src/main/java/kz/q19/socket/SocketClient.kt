@@ -625,7 +625,6 @@ class SocketClient private constructor(
         }
 
         val attachments = mutableListOf<Attachment>()
-
         if (attachmentsJsonArray != null) {
             for (i in 0 until attachmentsJsonArray.length()) {
                 val attachment = attachmentsJsonArray[i] as? JSONObject?
