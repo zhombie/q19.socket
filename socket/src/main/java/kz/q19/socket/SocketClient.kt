@@ -298,10 +298,14 @@ class SocketClient private constructor(
         )
     }
 
-    override fun sendFormFinalize(form: Form) {
+    override fun sendFormFinalize(form: Form, sender: String?) {
         emit(
             OutgoingSocketEvent.FORM_FINAL,
             json {
+                if (!sender.isNullOrBlank()) {
+                    put("sender", sender)
+                }
+
                 put("form_id", form.id)
 
                 val nodes = JSONArray()

@@ -32,7 +32,7 @@ interface SocketRepository {
     fun sendExternal(callbackData: String? = null)
 
     fun sendFormInitialize(formId: Long)
-    fun sendFormFinalize(form: Form)
+    fun sendFormFinalize(form: Form, sender: String? = null)
 
     fun sendCancel()
 
