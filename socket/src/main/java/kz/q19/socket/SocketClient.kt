@@ -489,21 +489,22 @@ class SocketClient private constructor(
         val time = data.optLong("time")
         val sender = data.getStringOrNull("sender")
         val from = data.getStringOrNull("from")
-        val media = data.optJSONObject("media")
-        val rtc = data.optJSONObject("rtc")
+        val mediaJsonObject = data.optJSONObject("media")
+        val rtcJsonObject = data.optJSONObject("rtc")
         val fuzzyTask = data.optBoolean("fuzzy_task")
 //        val form = message.optJSONObject("form")
-        val attachmentsJson = data.optJSONArray("attachments")
-        val replyMarkupJson = data.optJSONObject("reply_markup")
-        val formJson = data.optJSONObject("form")
+        val attachmentsJsonArray = data.optJSONArray("attachments")
+        val replyMarkupJsonObject = data.optJSONObject("reply_markup")
+        val formJsonObject = data.optJSONObject("form")
 
-        Logger.debug(TAG, "replyMarkupJson: $replyMarkupJson")
+        Logger.debug(TAG, "replyMarkupJsonObject: $replyMarkupJsonObject")
+        Logger.debug(TAG, "action: $action")
 
         var replyMarkup: Message.ReplyMarkup? = null
-        if (replyMarkupJson != null) {
+        if (replyMarkupJsonObject != null) {
             val rows = mutableListOf<List<Message.ReplyMarkup.Button>>()
 
-            val inlineKeyboard = replyMarkupJson.optJSONArray("inline_keyboard")
+            val inlineKeyboard = replyMarkupJsonObject.optJSONArray("inline_keyboard")
             Logger.debug(TAG, "inlineKeyboard: $inlineKeyboard")
             if (inlineKeyboard != null) {
                 for (i in 0 until inlineKeyboard.length()) {
@@ -532,11 +533,11 @@ class SocketClient private constructor(
         }
 
         var form: Form? = null
-        if (formJson != null && formJson.has("id")) {
+        if (formJsonObject != null && formJsonObject.has("id")) {
             form = Form(
-                id = formJson.optLong("id"),
-                title = formJson.getStringOrNull("title"),
-                prompt = formJson.getStringOrNull("prompt")
+                id = formJsonObject.optLong("id"),
+                title = formJsonObject.getStringOrNull("title"),
+                prompt = formJsonObject.getStringOrNull("prompt")
             )
         }
 
@@ -570,8 +571,8 @@ class SocketClient private constructor(
             if (isHandled == true) return@Listener
         }
 
-        if (rtc != null) {
-            when (rtc.getStringOrNull("type")) {
+        if (rtcJsonObject != null) {
+            when (rtcJsonObject.getStringOrNull("type")) {
                 WebRTC.Type.START?.value -> {
                     when (action) {
                         Message.Action.CALL_ACCEPT ->
@@ -589,16 +590,16 @@ class SocketClient private constructor(
                 WebRTC.Type.READY?.value ->
                     webRTCListener?.onWebRTCReady()
                 WebRTC.Type.OFFER?.value -> {
-                    val type = WebRTC.Type.by(rtc.getString("type"))
-                    val sdp = rtc.getString("sdp")
+                    val type = WebRTC.Type.by(rtcJsonObject.getString("type"))
+                    val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
                         webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.ANSWER?.value -> {
-                    val type = WebRTC.Type.by(rtc.getString("type"))
-                    val sdp = rtc.getString("sdp")
+                    val type = WebRTC.Type.by(rtcJsonObject.getString("type"))
+                    val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
                         webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
@@ -607,9 +608,9 @@ class SocketClient private constructor(
                 WebRTC.Type.CANDIDATE?.value ->
                     webRTCListener?.onWebRTCIceCandidate(
                         WebRTCIceCandidate(
-                            sdpMid = rtc.getString("id"),
-                            sdpMLineIndex = rtc.getInt("label"),
-                            sdp = rtc.getString("candidate")
+                            sdpMid = rtcJsonObject.getString("id"),
+                            sdpMLineIndex = rtcJsonObject.getInt("label"),
+                            sdp = rtcJsonObject.getString("candidate")
                         )
                     )
                 WebRTC.Type.HANGUP?.value ->
@@ -625,9 +626,9 @@ class SocketClient private constructor(
 
         val attachments = mutableListOf<Attachment>()
 
-        if (attachmentsJson != null) {
-            for (i in 0 until attachmentsJson.length()) {
-                val attachment = attachmentsJson[i] as? JSONObject?
+        if (attachmentsJsonArray != null) {
+            for (i in 0 until attachmentsJsonArray.length()) {
+                val attachment = attachmentsJsonArray[i] as? JSONObject?
                 attachments.add(
                     Attachment(
                         title = attachment?.getStringOrNull("title"),
@@ -639,13 +640,16 @@ class SocketClient private constructor(
             }
         }
 
-        if (media != null) {
-            val image = media.getStringOrNull("image")
-            val audio = media.getStringOrNull("audio")
-            val video = media.getStringOrNull("video")
-            val file = media.getStringOrNull("file")
-            val name = media.getStringOrNull("name")
-            val ext = media.getStringOrNull("ext")
+        var media: Media? = null
+        if (mediaJsonObject != null) {
+            val image = mediaJsonObject.getStringOrNull("image")
+            val audio = mediaJsonObject.getStringOrNull("audio")
+            val video = mediaJsonObject.getStringOrNull("video")
+            val document = mediaJsonObject.getStringOrNull("document")
+            val file = mediaJsonObject.getStringOrNull("file")
+
+            val name = mediaJsonObject.getStringOrNull("name")
+            val ext = mediaJsonObject.getStringOrNull("ext")
 
             val pair = if (!ext.isNullOrBlank()) {
                 if (!image.isNullOrBlank()) {
@@ -654,6 +658,8 @@ class SocketClient private constructor(
                     Attachment.Type.AUDIO to audio
                 } else if (!video.isNullOrBlank()) {
                     Attachment.Type.VIDEO to video
+                } else if (!document.isNullOrBlank()) {
+                    Attachment.Type.DOCUMENT to document
                 } else if (!file.isNullOrBlank()) {
                     Attachment.Type.FILE to file
                 } else {
@@ -663,13 +669,11 @@ class SocketClient private constructor(
                 null
             }
 
-            attachments.add(
-                Attachment(
-                    title = name,
-                    extension = findEnumBy { it.value == ext },
-                    urlPath = pair?.second,
-                    type = pair?.first
-                )
+            media = Media(
+                title = name,
+                extension = findEnumBy { it.value == ext },
+                urlPath = pair?.second,
+                type = pair?.first
             )
         }
 
@@ -679,6 +683,7 @@ class SocketClient private constructor(
                 type = Message.Type.INCOMING,
                 text = text,
                 replyMarkup = replyMarkup,
+                media = media,
                 attachments = attachments,
                 form = form,
                 timestamp = time
