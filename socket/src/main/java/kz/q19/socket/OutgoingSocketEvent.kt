@@ -7,13 +7,15 @@ internal enum class OutgoingSocketEvent(val value: String) {
 
     USER_FEEDBACK("user_feedback"),
 
+    USER_LANGUAGE("user_language"),
+
     USER_MESSAGE("user_message"),
 
     MESSAGE("message"),
 
-    CONFIRM_FUZZY_TASK("confirm_fuzzy_task"),
+    LOCATION("location"),
 
-    USER_LANGUAGE("user_language"),
+    CONFIRM_FUZZY_TASK("confirm_fuzzy_task"),
 
     EXTERNAL("external"),
 

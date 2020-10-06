@@ -225,6 +225,18 @@ class SocketClient private constructor(
         )
     }
 
+    override fun sendLocation(latitude: Double, longitude: Double) {
+        Logger.debug(TAG, "sendLocation() -> latitude: $latitude, longitude: $longitude")
+
+        emit(
+            OutgoingSocketEvent.LOCATION,
+            json {
+                put("latitude", latitude)
+                put("longitude", longitude)
+            }
+        )
+    }
+
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
         Logger.debug(TAG, "sendMessage() -> webRTC: $webRTC, action: $action")
 

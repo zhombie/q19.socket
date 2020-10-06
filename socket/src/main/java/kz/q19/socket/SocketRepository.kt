@@ -25,6 +25,8 @@ interface SocketRepository {
 
     fun sendUserFeedback(rating: Int, chatId: Long)
 
+    fun sendLocation(latitude: Double, longitude: Double)
+
     fun sendMessage(webRTC: WebRTC? = null, action: Message.Action? = null)
 
     fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String)
