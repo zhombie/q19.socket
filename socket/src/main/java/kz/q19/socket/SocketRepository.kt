@@ -2,6 +2,7 @@ package kz.q19.socket
 
 import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
+import kz.q19.socket.model.UserLocation
 
 interface SocketRepository {
     fun setSocketStateListener(socketStateListener: SocketStateListener? = null)
@@ -25,7 +26,7 @@ interface SocketRepository {
 
     fun sendUserFeedback(rating: Int, chatId: Long)
 
-    fun sendLocation(latitude: Double, longitude: Double)
+    fun sendUserLocation(userLocation: UserLocation)
 
     fun sendMessage(webRTC: WebRTC? = null, action: Message.Action? = null)
 

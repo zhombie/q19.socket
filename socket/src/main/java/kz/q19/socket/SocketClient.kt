@@ -10,6 +10,7 @@ import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
 import kz.q19.domain.model.webrtc.WebRTCIceCandidate
 import kz.q19.domain.model.webrtc.WebRTCSessionDescription
+import kz.q19.socket.model.UserLocation
 import kz.q19.utils.enums.findEnumBy
 import kz.q19.utils.json.getAsMutableList
 import kz.q19.utils.json.getLongOrNull
@@ -225,14 +226,21 @@ class SocketClient private constructor(
         )
     }
 
-    override fun sendLocation(latitude: Double, longitude: Double) {
-        Logger.debug(TAG, "sendLocation() -> latitude: $latitude, longitude: $longitude")
+    override fun sendUserLocation(userLocation: UserLocation) {
+        Logger.debug(TAG, "sendUserLocation() -> userLocation: $userLocation")
 
         emit(
-            OutgoingSocketEvent.LOCATION,
+            OutgoingSocketEvent.USER_LOCATION,
             json {
-                put("latitude", latitude)
-                put("longitude", longitude)
+                put("provider", userLocation.provider)
+                put("latitude", userLocation.latitude)
+                put("longitude", userLocation.longitude)
+                put("bearing", userLocation.bearing)
+                put("bearingAccuracyDegrees", userLocation.bearingAccuracyDegrees)
+                put("xAccuracyMeters", userLocation.xAccuracyMeters)
+                put("yAccuracyMeters", userLocation.yAccuracyMeters)
+                put("speed", userLocation.speed)
+                put("speedAccuracyMetersPerSecond", userLocation.speedAccuracyMetersPerSecond)
             }
         )
     }
