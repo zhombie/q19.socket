@@ -5,7 +5,7 @@ data class UserLocation(
     val latitude: Double,
     val longitude: Double,
     val bearing: Float? = null,
-    val bearingAccuracyDegrees: Float,
+    val bearingAccuracyDegrees: Float? = null,
     val xAccuracyMeters: Float? = null,
     val yAccuracyMeters: Float? = null,
     val speed: Float? = null,

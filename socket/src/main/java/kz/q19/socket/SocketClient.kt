@@ -226,12 +226,13 @@ class SocketClient private constructor(
         )
     }
 
-    override fun sendUserLocation(userLocation: UserLocation) {
+    override fun sendUserLocation(id: String, userLocation: UserLocation) {
         Logger.debug(TAG, "sendUserLocation() -> userLocation: $userLocation")
 
         emit(
             OutgoingSocketEvent.USER_LOCATION,
             json {
+                put("id", id)
                 put("provider", userLocation.provider)
                 put("latitude", userLocation.latitude)
                 put("longitude", userLocation.longitude)

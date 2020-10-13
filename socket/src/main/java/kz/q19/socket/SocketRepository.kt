@@ -26,7 +26,7 @@ interface SocketRepository {
 
     fun sendUserFeedback(rating: Int, chatId: Long)
 
-    fun sendUserLocation(userLocation: UserLocation)
+    fun sendUserLocation(id: String, userLocation: UserLocation)
 
     fun sendMessage(webRTC: WebRTC? = null, action: Message.Action? = null)
 
