@@ -289,6 +289,27 @@ class SocketClient private constructor(
         emit(OutgoingSocketEvent.MESSAGE, messageObject)
     }
 
+    override fun sendMessage(id: String, userLocation: UserLocation) {
+        Logger.debug(TAG, "sendMessage() -> id: $id, userLocation: $userLocation")
+
+        emit(
+            OutgoingSocketEvent.MESSAGE,
+            json {
+                put("action", "location")
+                put("id", id)
+                put("provider", userLocation.provider)
+                put("latitude", userLocation.latitude)
+                put("longitude", userLocation.longitude)
+                put("bearing", userLocation.bearing)
+                put("bearingAccuracyDegrees", userLocation.bearingAccuracyDegrees)
+                put("xAccuracyMeters", userLocation.xAccuracyMeters)
+                put("yAccuracyMeters", userLocation.yAccuracyMeters)
+                put("speed", userLocation.speed)
+                put("speedAccuracyMetersPerSecond", userLocation.speedAccuracyMetersPerSecond)
+            }
+        )
+    }
+
     override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
         emit(
             OutgoingSocketEvent.CONFIRM_FUZZY_TASK,
