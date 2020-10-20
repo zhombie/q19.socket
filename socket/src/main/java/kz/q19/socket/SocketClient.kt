@@ -624,7 +624,7 @@ class SocketClient private constructor(
                         Message.Action.CALL_ACCEPT ->
                             webRTCListener?.onWebRTCCallAccept()
                         Message.Action.CALL_REDIRECT ->
-                            webRTCListener?.onWebRTCCallAccept()
+                            webRTCListener?.onWebRTCCallRedirect()
                         Message.Action.CALL_REDIAL -> {
                         }
                         else -> {
