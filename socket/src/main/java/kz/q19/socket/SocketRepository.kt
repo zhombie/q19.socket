@@ -13,6 +13,8 @@ interface SocketRepository {
     fun connect(url: String)
     fun release()
 
+    fun getLastActiveTime(): Long
+
     fun initializeCall(callType: CallType, language: Language, scope: String? = null)
 
     fun getParentCategories()

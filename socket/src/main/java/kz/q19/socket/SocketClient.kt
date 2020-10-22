@@ -72,7 +72,7 @@ class SocketClient private constructor(
 
     private var lastActiveTime: Long = -1L
 
-    fun getLastActiveTime(): Long {
+    override fun getLastActiveTime(): Long {
         return lastActiveTime
     }
 
@@ -99,17 +99,6 @@ class SocketClient private constructor(
     }
 
     override fun release() {
-//        socket?.off(IncomingSocketEvent.CALL, onCallListener)
-//        socket?.off(Socket.EVENT_CONNECT, onConnectListener)
-//        socket?.off(IncomingSocketEvent.OPERATOR_GREET, onOperatorGreetListener)
-//        socket?.off(IncomingSocketEvent.FORM_INIT, onFormInitListener)
-//        socket?.off(IncomingSocketEvent.FORM_FINAL, onFormInitListener)
-//        socket?.off(IncomingSocketEvent.FEEDBACK, onFeedbackListener)
-//        socket?.off(IncomingSocketEvent.USER_QUEUE, onUserQueueListener)
-//        socket?.off(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
-//        socket?.off(IncomingSocketEvent.MESSAGE, onMessageListener)
-//        socket?.off(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
-//        socket?.off(Socket.EVENT_DISCONNECT, onDisconnectListener)
         socket?.off()
         socket?.disconnect()
         socket = null
