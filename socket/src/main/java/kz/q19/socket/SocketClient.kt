@@ -70,6 +70,12 @@ class SocketClient private constructor(
         this.webRTCListener = null
     }
 
+    private var lastActiveTime: Long = -1L
+
+    fun getLastActiveTime(): Long {
+        return lastActiveTime
+    }
+
     override fun connect(url: String) {
         val options = IO.Options()
         options.reconnection = true
@@ -772,7 +778,9 @@ class SocketClient private constructor(
     }
 
     private val onDisconnectListener = Emitter.Listener {
-//        Logger.debug(TAG, "event [EVENT_DISCONNECT]")
+        Logger.debug(TAG, "event [EVENT_DISCONNECT]")
+
+        lastActiveTime = System.currentTimeMillis()
 
         socketStateListener?.onDisconnect()
     }
