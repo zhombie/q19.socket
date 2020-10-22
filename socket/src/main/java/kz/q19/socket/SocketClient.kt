@@ -48,6 +48,8 @@ class SocketClient private constructor(
             return language
         }
 
+    private var lastActiveTime: Long = -1L
+
     private var socketStateListener: SocketStateListener? = null
     private var generalListener: GeneralListener? = null
     private var webRTCListener: WebRTCListener? = null
@@ -68,12 +70,6 @@ class SocketClient private constructor(
         this.socketStateListener = null
         this.generalListener = null
         this.webRTCListener = null
-    }
-
-    private var lastActiveTime: Long = -1L
-
-    override fun getLastActiveTime(): Long {
-        return lastActiveTime
     }
 
     override fun connect(url: String) {
@@ -102,6 +98,14 @@ class SocketClient private constructor(
         socket?.off()
         socket?.disconnect()
         socket = null
+    }
+
+    override fun getLastActiveTime(): Long {
+        return lastActiveTime
+    }
+
+    override fun isConnected(): Boolean {
+        return socket?.connected() ?: false
     }
 
     override fun initializeCall(callType: CallType, language: Language, scope: String?) {
