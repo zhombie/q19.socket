@@ -1,7 +1,7 @@
 package kz.q19.socket.listener
 
-import kz.q19.socket.model.LocationUpdate
+import kz.q19.domain.model.Location
 
 interface LocationListener {
-    fun onLocationUpdate(locationUpdate: LocationUpdate)
+    fun onLocationUpdate(location: Location)
 }

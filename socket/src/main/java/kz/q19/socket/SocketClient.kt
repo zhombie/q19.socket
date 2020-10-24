@@ -13,8 +13,6 @@ import kz.q19.domain.model.webrtc.WebRTCSessionDescription
 import kz.q19.socket.event.IncomingSocketEvent
 import kz.q19.socket.event.OutgoingSocketEvent
 import kz.q19.socket.listener.*
-import kz.q19.socket.model.LocationUpdate
-import kz.q19.socket.model.UserLocation
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
@@ -262,22 +260,22 @@ class SocketClient private constructor() : SocketRepository {
         )
     }
 
-    override fun sendUserLocation(id: String, userLocation: UserLocation) {
-        Logger.debug(TAG, "sendUserLocation() -> userLocation: $userLocation")
+    override fun sendUserLocation(id: String, location: Location) {
+        Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
         emit(
             OutgoingSocketEvent.USER_LOCATION,
             json {
                 put("id", id)
-                put("provider", userLocation.provider)
-                put("latitude", userLocation.latitude)
-                put("longitude", userLocation.longitude)
-                put("bearing", userLocation.bearing)
-                put("bearingAccuracyDegrees", userLocation.bearingAccuracyDegrees)
-                put("xAccuracyMeters", userLocation.xAccuracyMeters)
-                put("yAccuracyMeters", userLocation.yAccuracyMeters)
-                put("speed", userLocation.speed)
-                put("speedAccuracyMetersPerSecond", userLocation.speedAccuracyMetersPerSecond)
+                put("provider", location.provider)
+                put("latitude", location.latitude)
+                put("longitude", location.longitude)
+                put("bearing", location.bearing)
+                put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
+                put("xAccuracyMeters", location.xAccuracyMeters)
+                put("yAccuracyMeters", location.yAccuracyMeters)
+                put("speed", location.speed)
+                put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
             }
         )
     }
@@ -331,23 +329,23 @@ class SocketClient private constructor() : SocketRepository {
         emit(OutgoingSocketEvent.MESSAGE, messageObject)
     }
 
-    override fun sendMessage(id: String, userLocation: UserLocation) {
-        Logger.debug(TAG, "sendMessage() -> id: $id, userLocation: $userLocation")
+    override fun sendMessage(id: String, location: Location) {
+        Logger.debug(TAG, "sendMessage() -> id: $id, location: $location")
 
         emit(
             OutgoingSocketEvent.MESSAGE,
             json {
                 put("action", "location")
                 put("id", id)
-                put("provider", userLocation.provider)
-                put("latitude", userLocation.latitude)
-                put("longitude", userLocation.longitude)
-                put("bearing", userLocation.bearing)
-                put("bearingAccuracyDegrees", userLocation.bearingAccuracyDegrees)
-                put("xAccuracyMeters", userLocation.xAccuracyMeters)
-                put("yAccuracyMeters", userLocation.yAccuracyMeters)
-                put("speed", userLocation.speed)
-                put("speedAccuracyMetersPerSecond", userLocation.speedAccuracyMetersPerSecond)
+                put("provider", location.provider)
+                put("latitude", location.latitude)
+                put("longitude", location.longitude)
+                put("bearing", location.bearing)
+                put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
+                put("xAccuracyMeters", location.xAccuracyMeters)
+                put("yAccuracyMeters", location.yAccuracyMeters)
+                put("speed", location.speed)
+                put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
             }
         )
     }
@@ -834,7 +832,7 @@ class SocketClient private constructor() : SocketRepository {
             val longitude = coordsJsonArray.getDouble(0)
             val latitude = coordsJsonArray.getDouble(1)
             listenerInfo.locationListener?.onLocationUpdate(
-                LocationUpdate(LocationUpdate.Coordinates(longitude, latitude))
+                Location(longitude = longitude, latitude = latitude)
             )
         }
     }

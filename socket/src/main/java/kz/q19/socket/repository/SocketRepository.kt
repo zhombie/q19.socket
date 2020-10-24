@@ -3,7 +3,6 @@ package kz.q19.socket.repository
 import kz.q19.common.preferences.PreferencesProvider
 import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
-import kz.q19.socket.model.UserLocation
 
 interface SocketRepository : SocketListenerRepository,
     SocketStateRepository,
@@ -29,7 +28,7 @@ interface SocketRepository : SocketListenerRepository,
     fun sendUserFeedback(rating: Int, chatId: Long)
 
     fun sendMessage(webRTC: WebRTC? = null, action: Message.Action? = null)
-    fun sendMessage(id: String, userLocation: UserLocation)
+    fun sendMessage(id: String, location: Location)
 
     fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String)
 
