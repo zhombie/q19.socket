@@ -1,5 +1,6 @@
 package kz.q19.socket.repository
 
+import kz.q19.common.preferences.PreferencesProvider
 import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
 import kz.q19.socket.model.UserLocation
@@ -9,6 +10,8 @@ interface SocketRepository : SocketListenerRepository,
     SocketFormRepository,
     SocketLocationRepository
 {
+    fun setPreferencesProvider(preferencesProvider: PreferencesProvider?)
+
     fun isConnected(): Boolean
     fun getLastActiveTime(): Long
 
