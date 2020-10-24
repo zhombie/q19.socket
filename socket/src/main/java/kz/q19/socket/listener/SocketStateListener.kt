@@ -1,4 +1,4 @@
-package kz.q19.socket
+package kz.q19.socket.listener
 
 interface SocketStateListener {
     fun onConnect()

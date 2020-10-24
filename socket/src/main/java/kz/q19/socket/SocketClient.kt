@@ -10,7 +10,13 @@ import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
 import kz.q19.domain.model.webrtc.WebRTCIceCandidate
 import kz.q19.domain.model.webrtc.WebRTCSessionDescription
+import kz.q19.socket.event.IncomingSocketEvent
+import kz.q19.socket.event.OutgoingSocketEvent
+import kz.q19.socket.listener.*
+import kz.q19.socket.model.LocationUpdate
 import kz.q19.socket.model.UserLocation
+import kz.q19.socket.repository.SocketRepository
+import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
 import kz.q19.utils.json.getAsMutableList
 import kz.q19.utils.json.getLongOrNull
@@ -20,9 +26,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-class SocketClient private constructor(
-    private val preferencesProvider: PreferencesProvider
-) : SocketRepository {
+class SocketClient private constructor() : SocketRepository {
 
     companion object {
         private const val TAG = "SocketRepositoryImpl"
@@ -30,19 +34,25 @@ class SocketClient private constructor(
         @Volatile
         private var INSTANCE: SocketClient? = null
 
-        fun getInstance(preferencesProvider: PreferencesProvider): SocketClient {
+        fun getInstance(): SocketClient {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: SocketClient(preferencesProvider).also { INSTANCE = it }
+                INSTANCE ?: SocketClient().also { INSTANCE = it }
             }
         }
     }
 
-    private var socket: Socket? = null
+    var socket: Socket? = null
+
+    private var preferencesProvider: PreferencesProvider? = null
+
+    fun setPreferencesProvider(preferencesProvider: PreferencesProvider?) {
+        this.preferencesProvider = preferencesProvider
+    }
 
     private val language: String
         get() {
-            var language = preferencesProvider.getLanguage()
-            if (language.isBlank()) {
+            var language = preferencesProvider?.getLanguage()
+            if (language.isNullOrBlank()) {
                 language = Language.DEFAULT.key
             }
             return language
@@ -50,26 +60,44 @@ class SocketClient private constructor(
 
     private var lastActiveTime: Long = -1L
 
-    private var socketStateListener: SocketStateListener? = null
-    private var generalListener: GeneralListener? = null
-    private var webRTCListener: WebRTCListener? = null
+    private var _listenerInfo: ListenerInfo? = null
 
-    override fun setSocketStateListener(socketStateListener: SocketStateListener?) {
-        this.socketStateListener = socketStateListener
+    private fun getListenerInfo(): ListenerInfo {
+        var listenerInfo = _listenerInfo
+        return if (listenerInfo == null) {
+            listenerInfo = ListenerInfo()
+            listenerInfo
+        } else {
+            listenerInfo
+        }
     }
 
-    override fun setGeneralListener(generalListener: GeneralListener?) {
-        this.generalListener = generalListener
+    override fun setSocketStateListener(socketStateListener: SocketStateListener?) {
+        getListenerInfo().socketStateListener = socketStateListener
+    }
+
+    override fun setBasicListener(basicListener: BasicListener?) {
+        getListenerInfo().basicListener = basicListener
     }
 
     override fun setWebRTCListener(webRTCListener: WebRTCListener?) {
-        this.webRTCListener = webRTCListener
+        getListenerInfo().webRTCListener = webRTCListener
     }
 
-    override fun removeListeners() {
-        this.socketStateListener = null
-        this.generalListener = null
-        this.webRTCListener = null
+    override fun setDialogListener(dialogListener: DialogListener?) {
+        getListenerInfo().dialogListener = dialogListener
+    }
+
+    override fun setFormListener(formListener: FormListener?) {
+        getListenerInfo().formListener = formListener
+    }
+
+    override fun setLocationListener(locationListener: LocationListener?) {
+        getListenerInfo().locationListener = locationListener
+    }
+
+    override fun removeAllListeners() {
+        getListenerInfo().clear()
     }
 
     override fun connect(url: String) {
@@ -89,6 +117,7 @@ class SocketClient private constructor(
         socket?.on(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
         socket?.on(IncomingSocketEvent.MESSAGE, onMessageListener)
         socket?.on(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
+        socket?.on(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
         socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
         socket?.connect()
@@ -245,6 +274,12 @@ class SocketClient private constructor(
         )
     }
 
+    override fun sendLocationSubscribe() {
+        Logger.debug(TAG, "sendLocationSubscribe()")
+
+        emit(OutgoingSocketEvent.LOCATION_SUBSCRIBE)
+    }
+
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
         Logger.debug(TAG, "sendMessage() -> webRTC: $webRTC, action: $action")
 
@@ -384,19 +419,19 @@ class SocketClient private constructor(
     }
     
     private val onConnectListener = Emitter.Listener {
-        Logger.debug(TAG, "event [EVENT_CONNECT]")
+        Logger.debug(TAG, "event [${Socket.EVENT_CONNECT}]")
 
-        socketStateListener?.onConnect()
+        getListenerInfo().socketStateListener?.onConnect()
     }
 
     private val onOperatorGreetListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [OPERATOR_GREET]: $args")
+        Logger.debug(TAG, "event [${IncomingSocketEvent.OPERATOR_GREET}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-        Logger.debug(TAG, "[OPERATOR_GREET] data: $data")
+//        Logger.debug(TAG, "[${IncomingSocketEvent.OPERATOR_GREET}] data: $data")
 
 //        val name = data.optString("name")
         val fullName = data.optString("full_name")
@@ -406,7 +441,7 @@ class SocketClient private constructor(
 
         val text = data.optString("text")
 
-        generalListener?.onOperatorGreet(fullName, photo, text)
+        getListenerInfo().dialogListener?.onOperatorGreet(fullName, photo, text)
     }
 
     private val onFormInitListener = Emitter.Listener { args ->
@@ -447,7 +482,7 @@ class SocketClient private constructor(
             fields = fields
         )
 
-        generalListener?.onFormInit(form)
+        getListenerInfo().formListener?.onFormInit(form)
     }
 
     private val onFormFinalListener = Emitter.Listener { args ->
@@ -464,21 +499,21 @@ class SocketClient private constructor(
 //        val message = data.getStringOrNull("message")
 //        val success = data.optBoolean("success", false)
 
-        generalListener?.onFormFinal(text = trackId ?: "")
+        getListenerInfo().formListener?.onFormFinal(text = trackId ?: "")
     }
 
     private val onOperatorTypingListener = Emitter.Listener {
-        Logger.debug(TAG, "event [OPERATOR_TYPING]")
+        Logger.debug(TAG, "event [${IncomingSocketEvent.OPERATOR_TYPING}]")
     }
 
     private val onFeedbackListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [FEEDBACK]: $args")
+        Logger.debug(TAG, "event [${IncomingSocketEvent.FEEDBACK}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-        Logger.debug(TAG, "[FEEDBACK] data: $data")
+//        Logger.debug(TAG, "[FEEDBACK] data: $data")
 
         val buttonsJson = data.optJSONArray("buttons")
 
@@ -497,7 +532,7 @@ class SocketClient private constructor(
                 )
             }
 
-            generalListener?.onFeedback(text, ratingButtons)
+            getListenerInfo().dialogListener?.onFeedback(text, ratingButtons)
         }
     }
 
@@ -513,17 +548,17 @@ class SocketClient private constructor(
         val count = data.getInt("count")
 //            val channel = userQueue.getInt("channel")
 
-        generalListener?.onPendingUsersQueueCount(count = count)
+        getListenerInfo().basicListener?.onPendingUsersQueueCount(count = count)
     }
 
     private val onMessageListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [MESSAGE]: $args")
+        Logger.debug(TAG, "event [${IncomingSocketEvent.MESSAGE}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-        Logger.debug(TAG, "[MESSAGE] data: $data")
+//        Logger.debug(TAG, "[MESSAGE] data: $data")
 
         val id = data.getStringOrNull("id")?.trim()
         val text = data.getStringOrNull("text")?.trim()
@@ -587,32 +622,32 @@ class SocketClient private constructor(
         }
 
         if (noResults && from.isNullOrBlank() && sender.isNullOrBlank() && action == null && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onNoResultsFound(text, time)
+            val isHandled = getListenerInfo().basicListener?.onNoResultsFound(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (fuzzyTask && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onFuzzyTaskOffered(text, time)
+            val isHandled = getListenerInfo().basicListener?.onFuzzyTaskOffered(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (noOnline && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onNoOnlineOperators(text)
+            val isHandled = getListenerInfo().basicListener?.onNoOnlineOperators(text)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.CHAT_TIMEOUT && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onChatTimeout(text, time)
+            val isHandled = getListenerInfo().dialogListener?.onChatTimeout(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.OPERATOR_DISCONNECT && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onOperatorDisconnected(text, time)
+            val isHandled = getListenerInfo().dialogListener?.onOperatorDisconnected(text, time)
             if (isHandled == true) return@Listener
         }
 
         if (action == Message.Action.REDIRECT && !text.isNullOrBlank()) {
-            val isHandled = generalListener?.onUserRedirected(text, time)
+            val isHandled = getListenerInfo().dialogListener?.onUserRedirected(text, time)
             if (isHandled == true) return@Listener
         }
 
@@ -621,9 +656,9 @@ class SocketClient private constructor(
                 WebRTC.Type.START?.value -> {
                     when (action) {
                         Message.Action.CALL_ACCEPT ->
-                            webRTCListener?.onWebRTCCallAccept()
+                            getListenerInfo().webRTCListener?.onWebRTCCallAccept()
                         Message.Action.CALL_REDIRECT ->
-                            webRTCListener?.onWebRTCCallRedirect()
+                            getListenerInfo().webRTCListener?.onWebRTCCallRedirect()
                         Message.Action.CALL_REDIAL -> {
                         }
                         else -> {
@@ -631,15 +666,15 @@ class SocketClient private constructor(
                     }
                 }
                 WebRTC.Type.PREPARE?.value ->
-                    webRTCListener?.onWebRTCPrepare()
+                    getListenerInfo().webRTCListener?.onWebRTCPrepare()
                 WebRTC.Type.READY?.value ->
-                    webRTCListener?.onWebRTCReady()
+                    getListenerInfo().webRTCListener?.onWebRTCReady()
                 WebRTC.Type.OFFER?.value -> {
                     val type = WebRTC.Type.by(rtcJsonObject.getString("type"))
                     val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
-                        webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
+                        getListenerInfo().webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.ANSWER?.value -> {
@@ -647,11 +682,11 @@ class SocketClient private constructor(
                     val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
-                        webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
+                        getListenerInfo().webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
                     }
                 }
                 WebRTC.Type.CANDIDATE?.value ->
-                    webRTCListener?.onWebRTCIceCandidate(
+                    getListenerInfo().webRTCListener?.onWebRTCIceCandidate(
                         WebRTCIceCandidate(
                             sdpMid = rtcJsonObject.getString("id"),
                             sdpMLineIndex = rtcJsonObject.getInt("label"),
@@ -659,14 +694,14 @@ class SocketClient private constructor(
                         )
                     )
                 WebRTC.Type.HANGUP?.value ->
-                    webRTCListener?.onWebRTCHangup()
+                    getListenerInfo().webRTCListener?.onWebRTCHangup()
             }
             return@Listener
         }
 
         if (!data.isNull("queued")) {
             val queued = data.optInt("queued")
-            generalListener?.onPendingUsersQueueCount(text, queued)
+            getListenerInfo().basicListener?.onPendingUsersQueueCount(text, queued)
         }
 
         val attachments = mutableListOf<Attachment>()
@@ -721,7 +756,7 @@ class SocketClient private constructor(
             )
         }
 
-        generalListener?.onMessage(
+        getListenerInfo().basicListener?.onMessage(
             message = Message(
                 id = id,
                 type = Message.Type.INCOMING,
@@ -767,15 +802,44 @@ class SocketClient private constructor(
             }
         }
 
-        generalListener?.onCategories(currentCategories.sortedBy { it.config?.order })
+        getListenerInfo().basicListener?.onCategories(currentCategories.sortedBy { it.config?.order })
+    }
+
+    private val onLocationUpdate = Emitter.Listener { args ->
+        Logger.debug(TAG, "event [${IncomingSocketEvent.LOCATION_UPDATE}]")
+
+        if (args.size != 1) return@Listener
+
+        val data = args[0] as? JSONObject? ?: return@Listener
+
+        val locationUpdateJson = data.optJSONObject("location_update") ?: return@Listener
+
+        val coordinates = locationUpdateJson.optJSONArray("coords")
+
+        if (coordinates == null) {
+            // Ignored
+        } else {
+            if (coordinates.length() == 2) {
+                val longitude = coordinates.getDouble(0)
+                val latitude = coordinates.getDouble(1)
+                getListenerInfo().locationListener?.onLocationUpdate(
+                    LocationUpdate(
+                        LocationUpdate.Coordinates(
+                            longitude,
+                            latitude
+                        )
+                    )
+                )
+            }
+        }
     }
 
     private val onDisconnectListener = Emitter.Listener {
-        Logger.debug(TAG, "event [EVENT_DISCONNECT]")
+        Logger.debug(TAG, "event [${Socket.EVENT_DISCONNECT}]")
 
         lastActiveTime = System.currentTimeMillis()
 
-        socketStateListener?.onDisconnect()
+        getListenerInfo().socketStateListener?.onDisconnect()
     }
 
 }

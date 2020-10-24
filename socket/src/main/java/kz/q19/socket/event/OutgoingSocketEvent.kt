@@ -1,4 +1,4 @@
-package kz.q19.socket
+package kz.q19.socket.event
 
 internal enum class OutgoingSocketEvent(val value: String) {
     INITIALIZE_CALL("initialize"),
@@ -14,6 +14,8 @@ internal enum class OutgoingSocketEvent(val value: String) {
     USER_MESSAGE("user_message"),
 
     USER_LOCATION("user_location"),
+
+    LOCATION_SUBSCRIBE("location_subscribe"),
 
     CONFIRM_FUZZY_TASK("confirm_fuzzy_task"),
 

@@ -1,4 +1,4 @@
-package kz.q19.socket
+package kz.q19.socket.event
 
 internal object IncomingSocketEvent {
 //    const val CALL = "call"
@@ -10,4 +10,5 @@ internal object IncomingSocketEvent {
     const val OPERATOR_TYPING = "operator_typing"
     const val MESSAGE = "message"
     const val CATEGORY_LIST = "category_list"
+    const val LOCATION_UPDATE = "location_update"
 }
