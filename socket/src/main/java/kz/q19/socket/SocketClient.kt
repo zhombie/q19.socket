@@ -785,7 +785,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onCategoryListListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [CATEGORY_LIST]")
+//        Logger.debug(TAG, "event [${IncomingSocketEvent.CATEGORY_LIST}]")
 
         if (args.size != 1) return@Listener
 
@@ -820,31 +820,22 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onLocationUpdate = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.LOCATION_UPDATE}]")
+//        Logger.debug(TAG, "event [${IncomingSocketEvent.LOCATION_UPDATE}]")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-        val locationUpdateJson = data.optJSONObject("location_update") ?: return@Listener
+        Logger.debug(TAG, "[${IncomingSocketEvent.LOCATION_UPDATE}] data: $data")
 
-        val coordinates = locationUpdateJson.optJSONArray("coords")
+        val coordsJsonArray = data.optJSONArray("coords") ?: return@Listener
 
-        if (coordinates == null) {
-            // Ignored
-        } else {
-            if (coordinates.length() == 2) {
-                val longitude = coordinates.getDouble(0)
-                val latitude = coordinates.getDouble(1)
-                listenerInfo.locationListener?.onLocationUpdate(
-                    LocationUpdate(
-                        LocationUpdate.Coordinates(
-                            longitude,
-                            latitude
-                        )
-                    )
-                )
-            }
+        if (coordsJsonArray.length() == 2) {
+            val longitude = coordsJsonArray.getDouble(0)
+            val latitude = coordsJsonArray.getDouble(1)
+            listenerInfo.locationListener?.onLocationUpdate(
+                LocationUpdate(LocationUpdate.Coordinates(longitude, latitude))
+            )
         }
     }
 
