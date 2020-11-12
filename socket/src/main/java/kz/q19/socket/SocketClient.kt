@@ -123,7 +123,6 @@ class SocketClient private constructor() : SocketRepository {
         socket?.on(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
         socket?.on(IncomingSocketEvent.MESSAGE, onMessageListener)
         socket?.on(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
-        socket?.on(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
         socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
         socket?.connect()
@@ -283,7 +282,15 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendLocationSubscribe() {
         Logger.debug(TAG, "sendLocationSubscribe()")
 
+        socket?.on(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
+
         emit(OutgoingSocketEvent.LOCATION_SUBSCRIBE)
+    }
+
+    override fun sendLocationUnsubscribe() {
+        Logger.debug(TAG, "sendLocationUnsubscribe()")
+
+        socket?.off(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
     }
 
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {

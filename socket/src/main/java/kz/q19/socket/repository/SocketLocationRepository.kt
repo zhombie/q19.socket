@@ -6,4 +6,5 @@ interface SocketLocationRepository {
     fun sendUserLocation(id: String, location: Location)
 
     fun sendLocationSubscribe()
+    fun sendLocationUnsubscribe()
 }
