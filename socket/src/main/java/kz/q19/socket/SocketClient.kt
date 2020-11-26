@@ -5,13 +5,11 @@ package kz.q19.socket
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
-import kz.q19.common.preferences.PreferencesProvider
 import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.WebRTC
 import kz.q19.domain.model.webrtc.WebRTCIceCandidate
 import kz.q19.domain.model.webrtc.WebRTCSessionDescription
-import kz.q19.socket.event.IncomingSocketEvent
-import kz.q19.socket.event.OutgoingSocketEvent
+import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
@@ -41,21 +39,10 @@ class SocketClient private constructor() : SocketRepository {
 
     var socket: Socket? = null
 
-    private var preferencesProvider: PreferencesProvider? = null
-
-    override fun setPreferencesProvider(preferencesProvider: PreferencesProvider?) {
-        Logger.debug(TAG, "setPreferencesProvider() -> preferencesProvider: $preferencesProvider")
-
-        this.preferencesProvider = preferencesProvider
-    }
-
     private val language: String
         get() {
-            var language = preferencesProvider?.getLanguage()
-            if (language.isNullOrBlank()) {
-                language = Language.DEFAULT.key
-            }
-            return language
+            val language = SocketClientConfig.getLanguage()
+            return language.key
         }
 
     private var lastActiveTime: Long = -1L
@@ -114,15 +101,15 @@ class SocketClient private constructor() : SocketRepository {
         socket = IO.socket(url, options)
 
         socket?.on(Socket.EVENT_CONNECT, onConnectListener)
-//        socket?.on(IncomingSocketEvent.CALL, onCallListener)
-        socket?.on(IncomingSocketEvent.OPERATOR_GREET, onOperatorGreetListener)
-        socket?.on(IncomingSocketEvent.FORM_INIT, onFormInitListener)
-        socket?.on(IncomingSocketEvent.FORM_FINAL, onFormFinalListener)
-        socket?.on(IncomingSocketEvent.FEEDBACK, onFeedbackListener)
-        socket?.on(IncomingSocketEvent.USER_QUEUE, onUserQueueListener)
-        socket?.on(IncomingSocketEvent.OPERATOR_TYPING, onOperatorTypingListener)
-        socket?.on(IncomingSocketEvent.MESSAGE, onMessageListener)
-        socket?.on(IncomingSocketEvent.CATEGORY_LIST, onCategoryListListener)
+//        socket?.on(SocketEvent.Incoming.CALL, onCallListener)
+        socket?.on(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
+        socket?.on(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
+        socket?.on(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
+        socket?.on(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
+        socket?.on(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
+        socket?.on(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
+        socket?.on(SocketEvent.Incoming.MESSAGE, onMessageListener)
+        socket?.on(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
         socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
         socket?.connect()
@@ -148,7 +135,7 @@ class SocketClient private constructor() : SocketRepository {
         when (callType) {
             CallType.TEXT -> {
                 emit(
-                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    SocketEvent.Outgoing.INITIALIZE_CALL,
                     json {
                         put("video", false)
                         if (!scope.isNullOrBlank()) {
@@ -160,7 +147,7 @@ class SocketClient private constructor() : SocketRepository {
             }
             CallType.AUDIO -> {
                 emit(
-                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    SocketEvent.Outgoing.INITIALIZE_CALL,
                     json {
                         put("audio", true)
                         if (!scope.isNullOrBlank()) {
@@ -172,7 +159,7 @@ class SocketClient private constructor() : SocketRepository {
             }
             CallType.VIDEO -> {
                 emit(
-                    OutgoingSocketEvent.INITIALIZE_CALL,
+                    SocketEvent.Outgoing.INITIALIZE_CALL,
                     json {
                         put("video", true)
                         if (!scope.isNullOrBlank()) {
@@ -191,7 +178,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun getCategories(parentId: Long) {
         emit(
-            OutgoingSocketEvent.USER_DASHBOARD,
+            SocketEvent.Outgoing.USER_DASHBOARD,
             json {
                 put("action", "get_category_list")
                 put("parent_id", parentId)
@@ -202,7 +189,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun getResponse(id: Long) {
         emit(
-            OutgoingSocketEvent.USER_DASHBOARD,
+            SocketEvent.Outgoing.USER_DASHBOARD,
             json {
                 put("action", "get_response")
                 put("id", id)
@@ -215,7 +202,7 @@ class SocketClient private constructor() : SocketRepository {
         Logger.debug(TAG, "sendUserLanguage() -> language: $language")
 
         emit(
-            OutgoingSocketEvent.USER_LANGUAGE,
+            SocketEvent.Outgoing.USER_LANGUAGE,
             json {
                 put("language", language.key)
             }
@@ -232,7 +219,7 @@ class SocketClient private constructor() : SocketRepository {
         val text = message.trim()
 
         emit(
-            OutgoingSocketEvent.USER_MESSAGE,
+            SocketEvent.Outgoing.USER_MESSAGE,
             json {
                 put("text", text)
                 put("lang", language)
@@ -242,7 +229,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendUserMediaMessage(attachmentType: Attachment.Type, url: String) {
         emit(
-            OutgoingSocketEvent.USER_MESSAGE,
+            SocketEvent.Outgoing.USER_MESSAGE,
             json {
                 put(attachmentType.key, url)
             }
@@ -251,7 +238,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendUserFeedback(rating: Int, chatId: Long) {
         emit(
-            OutgoingSocketEvent.USER_FEEDBACK,
+            SocketEvent.Outgoing.USER_FEEDBACK,
             json {
                 put("r", rating)
                 put("chat_id", chatId)
@@ -263,7 +250,7 @@ class SocketClient private constructor() : SocketRepository {
         Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
         emit(
-            OutgoingSocketEvent.USER_LOCATION,
+            SocketEvent.Outgoing.USER_LOCATION,
             json {
                 put("id", id)
                 put("provider", location.provider)
@@ -282,15 +269,15 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendLocationSubscribe() {
         Logger.debug(TAG, "sendLocationSubscribe()")
 
-        socket?.on(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
+        socket?.on(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
 
-        emit(OutgoingSocketEvent.LOCATION_SUBSCRIBE)
+        emit(SocketEvent.Outgoing.LOCATION_SUBSCRIBE)
     }
 
     override fun sendLocationUnsubscribe() {
         Logger.debug(TAG, "sendLocationUnsubscribe()")
 
-        socket?.off(IncomingSocketEvent.LOCATION_UPDATE, onLocationUpdate)
+        socket?.off(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
     }
 
     override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
@@ -333,14 +320,14 @@ class SocketClient private constructor() : SocketRepository {
 
         Logger.debug(TAG, "sendMessage() -> messageObject: $messageObject")
 
-        emit(OutgoingSocketEvent.MESSAGE, messageObject)
+        emit(SocketEvent.Outgoing.MESSAGE, messageObject)
     }
 
     override fun sendMessage(id: String, location: Location) {
         Logger.debug(TAG, "sendMessage() -> id: $id, location: $location")
 
         emit(
-            OutgoingSocketEvent.MESSAGE,
+            SocketEvent.Outgoing.MESSAGE,
             json {
                 put("action", "location")
                 put("id", id)
@@ -359,7 +346,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
         emit(
-            OutgoingSocketEvent.CONFIRM_FUZZY_TASK,
+            SocketEvent.Outgoing.CONFIRM_FUZZY_TASK,
             json {
                 put("name", name)
                 put("email", email)
@@ -371,7 +358,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendExternal(callbackData: String?) {
         emit(
-            OutgoingSocketEvent.EXTERNAL,
+            SocketEvent.Outgoing.EXTERNAL,
             json {
                 put("callback_data", callbackData)
             }
@@ -380,7 +367,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendFormInitialize(formId: Long) {
         emit(
-            OutgoingSocketEvent.FORM_INIT,
+            SocketEvent.Outgoing.FORM_INIT,
             json {
                 put("form_id", formId)
             }
@@ -389,7 +376,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun sendFormFinalize(form: Form, sender: String?) {
         emit(
-            OutgoingSocketEvent.FORM_FINAL,
+            SocketEvent.Outgoing.FORM_FINAL,
             json {
                 if (!sender.isNullOrBlank()) {
                     put("sender", sender)
@@ -420,15 +407,15 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun sendCancel() {
-        emit(OutgoingSocketEvent.CANCEL)
+        emit(SocketEvent.Outgoing.CANCEL)
     }
 
     override fun sendCancelPendingCall() {
-        emit(OutgoingSocketEvent.CANCEL_PENDING_CALL)
+        emit(SocketEvent.Outgoing.CANCEL_PENDING_CALL)
     }
 
-    private fun emit(outgoingSocketEvent: OutgoingSocketEvent, jsonObject: JSONObject? = null): Emitter? {
-        return socket?.emit(outgoingSocketEvent.value, jsonObject)
+    private fun emit(event: String, jsonObject: JSONObject? = null): Emitter? {
+        return socket?.emit(event, jsonObject)
     }
     
     private val onConnectListener = Emitter.Listener {
@@ -438,13 +425,13 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onOperatorGreetListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.OPERATOR_GREET}]: $args")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_GREET}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-//        Logger.debug(TAG, "[${IncomingSocketEvent.OPERATOR_GREET}] data: $data")
+//        Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
 
 //        val name = data.optString("name")
         val fullName = data.optString("full_name")
@@ -460,7 +447,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onFormInitListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.FORM_INIT}]: $args")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_INIT}]: $args")
 
         if (args.size != 1) return@Listener
 
@@ -503,7 +490,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onFormFinalListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.FORM_FINAL}]: $args")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_FINAL}]: $args")
 
         if (args.size != 1) return@Listener
 
@@ -520,11 +507,11 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onOperatorTypingListener = Emitter.Listener {
-        Logger.debug(TAG, "event [${IncomingSocketEvent.OPERATOR_TYPING}]")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_TYPING}]")
     }
 
     private val onFeedbackListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.FEEDBACK}]: $args")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.FEEDBACK}]: $args")
 
         if (args.size != 1) return@Listener
 
@@ -569,7 +556,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onMessageListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${IncomingSocketEvent.MESSAGE}]: $args")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.MESSAGE}]: $args")
 
         if (args.size != 1) return@Listener
 
@@ -790,7 +777,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onCategoryListListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [${IncomingSocketEvent.CATEGORY_LIST}]")
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.CATEGORY_LIST}]")
 
         if (args.size != 1) return@Listener
 
@@ -825,13 +812,13 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onLocationUpdate = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [${IncomingSocketEvent.LOCATION_UPDATE}]")
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-        Logger.debug(TAG, "[${IncomingSocketEvent.LOCATION_UPDATE}] data: $data")
+        Logger.debug(TAG, "[${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
 
         val coordsJsonArray = data.optJSONArray("coords") ?: return@Listener
 
