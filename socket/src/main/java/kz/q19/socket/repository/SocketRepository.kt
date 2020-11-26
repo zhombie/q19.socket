@@ -11,7 +11,12 @@ interface SocketRepository : SocketListenerRepository,
     fun isConnected(): Boolean
     fun getLastActiveTime(): Long
 
+    @Deprecated(
+        "Server does not support method. Migrate to the new method",
+        replaceWith = ReplaceWith("initializeCall(callType, language, scope, topic)")
+    )
     fun initializeCall(callType: CallType, language: Language, scope: String? = null)
+    fun initializeCall(callType: CallType, language: Language, scope: String? = null, topic: String? = null)
 
     fun getParentCategories()
     fun getCategories(parentId: Long)

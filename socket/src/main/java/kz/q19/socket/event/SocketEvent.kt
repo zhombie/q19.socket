@@ -35,7 +35,7 @@ internal sealed class SocketEvent {
         const val FORM_INIT = "form_init"
         const val FORM_FINAL = "form_final"
 
-        const val INITIALIZE_CALL = "initialize"
+        const val INITIALIZE = "initialize"
 
         const val LOCATION_SUBSCRIBE = "location_subscribe"
 

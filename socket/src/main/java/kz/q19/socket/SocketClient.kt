@@ -2,6 +2,7 @@
 
 package kz.q19.socket
 
+import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
@@ -14,10 +15,7 @@ import kz.q19.socket.listener.*
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
-import kz.q19.utils.json.getAsMutableList
-import kz.q19.utils.json.getLongOrNull
-import kz.q19.utils.json.getStringOrNull
-import kz.q19.utils.json.json
+import kz.q19.utils.json.*
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -134,40 +132,60 @@ class SocketClient private constructor() : SocketRepository {
 
         when (callType) {
             CallType.TEXT -> {
-                emit(
-                    SocketEvent.Outgoing.INITIALIZE_CALL,
-                    json {
-                        put("video", false)
-                        if (!scope.isNullOrBlank()) {
-                            put("scope", scope)
-                        }
-                        put("lang", language)
-                    }
-                )
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("video", false)
+                    putIfValueNotNull("scope", scope)
+                    put("lang", language)
+                })
             }
             CallType.AUDIO -> {
-                emit(
-                    SocketEvent.Outgoing.INITIALIZE_CALL,
-                    json {
-                        put("audio", true)
-                        if (!scope.isNullOrBlank()) {
-                            put("scope", scope)
-                        }
-                        put("lang", language)
-                    }
-                )
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("audio", true)
+                    putIfValueNotNull("scope", scope)
+                    put("lang", language)
+                })
             }
             CallType.VIDEO -> {
-                emit(
-                    SocketEvent.Outgoing.INITIALIZE_CALL,
-                    json {
-                        put("video", true)
-                        if (!scope.isNullOrBlank()) {
-                            put("scope", scope)
-                        }
-                        put("lang", language)
-                    }
-                )
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("video", true)
+                    putIfValueNotNull("scope", scope)
+                    put("lang", language)
+                })
+            }
+        }
+    }
+
+    override fun initializeCall(
+        callType: CallType,
+        language: Language,
+        scope: String?,
+        topic: String?
+    ) {
+        Logger.debug(TAG, "initializeCall() -> callType: $callType, language: $language, scope: $scope, topic: $topic")
+
+        when (callType) {
+            CallType.TEXT -> {
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    putIfValueNotNull("scope", scope)
+                    putIfValueNotNull("topic", topic)
+                    put("lang", language)
+                })
+            }
+            CallType.AUDIO -> {
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("media", "audio")
+                    putIfValueNotNull("scope", scope)
+                    putIfValueNotNull("topic", topic)
+                    put("lang", language)
+                })
+            }
+            CallType.VIDEO -> {
+                emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("media", "video")
+                    putIfValueNotNull("scope", scope)
+                    putIfValueNotNull("topic", topic)
+                    put("lang", language)
+                })
             }
         }
     }
@@ -177,36 +195,27 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun getCategories(parentId: Long) {
-        emit(
-            SocketEvent.Outgoing.USER_DASHBOARD,
-            json {
-                put("action", "get_category_list")
-                put("parent_id", parentId)
-                put("lang", language)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
+            put("action", "get_category_list")
+            put("parent_id", parentId)
+            put("lang", language)
+        })
     }
 
     override fun getResponse(id: Long) {
-        emit(
-            SocketEvent.Outgoing.USER_DASHBOARD,
-            json {
-                put("action", "get_response")
-                put("id", id)
-                put("lang", language)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
+            put("action", "get_response")
+            put("id", id)
+            put("lang", language)
+        })
     }
 
     override fun sendUserLanguage(language: Language) {
         Logger.debug(TAG, "sendUserLanguage() -> language: $language")
 
-        emit(
-            SocketEvent.Outgoing.USER_LANGUAGE,
-            json {
-                put("language", language.key)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_LANGUAGE, json {
+            put("language", language.key)
+        })
     }
 
     override fun sendUserMessage(message: String) {
@@ -218,52 +227,40 @@ class SocketClient private constructor() : SocketRepository {
 
         val text = message.trim()
 
-        emit(
-            SocketEvent.Outgoing.USER_MESSAGE,
-            json {
-                put("text", text)
-                put("lang", language)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_MESSAGE, json {
+            put("text", text)
+            put("lang", language)
+        })
     }
 
     override fun sendUserMediaMessage(attachmentType: Attachment.Type, url: String) {
-        emit(
-            SocketEvent.Outgoing.USER_MESSAGE,
-            json {
-                put(attachmentType.key, url)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_MESSAGE, json {
+            put(attachmentType.key, url)
+        })
     }
 
     override fun sendUserFeedback(rating: Int, chatId: Long) {
-        emit(
-            SocketEvent.Outgoing.USER_FEEDBACK,
-            json {
-                put("r", rating)
-                put("chat_id", chatId)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_FEEDBACK, json {
+            put("r", rating)
+            put("chat_id", chatId)
+        })
     }
 
     override fun sendUserLocation(id: String, location: Location) {
         Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
-        emit(
-            SocketEvent.Outgoing.USER_LOCATION,
-            json {
-                put("id", id)
-                put("provider", location.provider)
-                put("latitude", location.latitude)
-                put("longitude", location.longitude)
-                put("bearing", location.bearing)
-                put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
-                put("xAccuracyMeters", location.xAccuracyMeters)
-                put("yAccuracyMeters", location.yAccuracyMeters)
-                put("speed", location.speed)
-                put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
-            }
-        )
+        emit(SocketEvent.Outgoing.USER_LOCATION, json {
+            put("id", id)
+            put("provider", location.provider)
+            put("latitude", location.latitude)
+            put("longitude", location.longitude)
+            put("bearing", location.bearing)
+            put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
+            put("xAccuracyMeters", location.xAccuracyMeters)
+            put("yAccuracyMeters", location.yAccuracyMeters)
+            put("speed", location.speed)
+            put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
+        })
     }
 
     override fun sendLocationSubscribe() {
@@ -289,22 +286,10 @@ class SocketClient private constructor() : SocketRepository {
             if (webRTC != null) {
                 messageObject.put("rtc", json {
                     put("type", webRTC.type.value)
-
-                    if (!webRTC.sdp.isNullOrBlank()) {
-                        put("sdp", webRTC.sdp)
-                    }
-
-                    if (!webRTC.id.isNullOrBlank()) {
-                        put("id", webRTC.id)
-                    }
-
-                    webRTC.label?.let { label ->
-                        put("label", label)
-                    }
-
-                    if (!webRTC.candidate.isNullOrBlank()) {
-                        put("candidate", webRTC.candidate)
-                    }
+                    putIfValueNotNull("id", webRTC.id)
+                    putIfValueNotNull("label", webRTC.label)
+                    putIfValueNotNull("candidate", webRTC.candidate)
+                    putIfValueNotNull("sdp", webRTC.sdp)
                 })
             }
 
@@ -326,84 +311,84 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendMessage(id: String, location: Location) {
         Logger.debug(TAG, "sendMessage() -> id: $id, location: $location")
 
-        emit(
-            SocketEvent.Outgoing.MESSAGE,
-            json {
-                put("action", "location")
-                put("id", id)
-                put("provider", location.provider)
-                put("latitude", location.latitude)
-                put("longitude", location.longitude)
-                put("bearing", location.bearing)
-                put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
-                put("xAccuracyMeters", location.xAccuracyMeters)
-                put("yAccuracyMeters", location.yAccuracyMeters)
-                put("speed", location.speed)
-                put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
-            }
-        )
+        emit(SocketEvent.Outgoing.MESSAGE, json {
+            put("action", "location")
+            put("id", id)
+            put("provider", location.provider)
+            put("latitude", location.latitude)
+            put("longitude", location.longitude)
+            put("bearing", location.bearing)
+            put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
+            put("xAccuracyMeters", location.xAccuracyMeters)
+            put("yAccuracyMeters", location.yAccuracyMeters)
+            put("speed", location.speed)
+            put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
+        })
     }
 
     override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
-        emit(
-            SocketEvent.Outgoing.CONFIRM_FUZZY_TASK,
-            json {
-                put("name", name)
-                put("email", email)
-                put("phone", phone)
-                put("res", '1')
-            }
-        )
+        emit(SocketEvent.Outgoing.CONFIRM_FUZZY_TASK, json {
+            put("name", name)
+            put("email", email)
+            put("phone", phone)
+            put("res", '1')
+        })
     }
 
     override fun sendExternal(callbackData: String?) {
-        emit(
-            SocketEvent.Outgoing.EXTERNAL,
-            json {
-                put("callback_data", callbackData)
-            }
-        )
+        emit(SocketEvent.Outgoing.EXTERNAL, json {
+            put("callback_data", callbackData)
+        })
     }
 
     override fun sendFormInitialize(formId: Long) {
-        emit(
-            SocketEvent.Outgoing.FORM_INIT,
-            json {
-                put("form_id", formId)
-            }
-        )
+        emit(SocketEvent.Outgoing.FORM_INIT, json {
+            put("form_id", formId)
+        })
     }
 
     override fun sendFormFinalize(form: Form, sender: String?) {
-        emit(
-            SocketEvent.Outgoing.FORM_FINAL,
-            json {
-                if (!sender.isNullOrBlank()) {
-                    put("sender", sender)
-                }
+        emit(SocketEvent.Outgoing.FORM_FINAL, json {
+            if (!sender.isNullOrBlank()) {
+                put("sender", sender)
+            }
 
-                put("form_id", form.id)
+            put("form_id", form.id)
 
-                val nodes = JSONArray()
-                val fields = JSONObject()
+            val nodes = JSONArray()
+            val fields = JSONObject()
 
-                form.fields.forEach { field ->
-                    if (field.isFlex) {
-                        nodes.put(json { put(field.type.value, field.value ?: "") })
-                    } else {
-                        val title = field.title
-                        if (!title.isNullOrBlank()) {
-                            fields.put(title, json { put(field.type.value, field.value) })
-                        }
+            form.fields.forEach { field ->
+                if (field.isFlex) {
+                    nodes.put(json {
+                        put(field.type.value, field.value)
+                        put(
+                            "${field.type.value}_info",
+                            json {
+                                putIfValueNotNull("extension", field.info?.extension?.value)
+                                putIfValueNotNull("width", field.info?.width)
+                                putIfValueNotNull("height", field.info?.height)
+                                putIfValueNotNull("duration", field.info?.duration)
+                                putIfValueNotNull("date_added", field.info?.dateAdded)
+                                putIfValueNotNull("date_modified", field.info?.dateModified)
+                                putIfValueNotNull("date_taken", field.info?.dateTaken)
+                                putIfValueNotNull("size", field.info?.size)
+                            }
+                        )
+                    })
+                } else {
+                    val title = field.title
+                    if (!title.isNullOrBlank()) {
+                        fields.put(title, json { put(field.type.value, field.value) })
                     }
                 }
-
-                put("form_data", json {
-                    put("nodes", nodes)
-                    put("fields", fields)
-                })
             }
-        )
+
+            put("form_data", json {
+                put("nodes", nodes)
+                put("fields", fields)
+            })
+        })
     }
 
     override fun sendCancel() {
@@ -415,7 +400,13 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private fun emit(event: String, jsonObject: JSONObject? = null): Emitter? {
-        return socket?.emit(event, jsonObject)
+        return socket?.emit(
+            event,
+            jsonObject,
+            Ack { args ->
+                Logger.debug(TAG, "args: $args")
+            }
+        )
     }
     
     private val onConnectListener = Emitter.Listener {
