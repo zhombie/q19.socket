@@ -7,9 +7,7 @@ import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import kz.q19.domain.model.*
-import kz.q19.domain.model.webrtc.WebRTC
-import kz.q19.domain.model.webrtc.WebRTCIceCandidate
-import kz.q19.domain.model.webrtc.WebRTCSessionDescription
+import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
 import kz.q19.socket.repository.SocketRepository
@@ -157,34 +155,63 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun initializeCall(
         callType: CallType,
-        language: Language,
-        scope: String?,
-        topic: String?
+        userId: Long,
+        domain: String?,
+        topic: String?,
+        location: Location?,
+        language: Language
     ) {
-        Logger.debug(TAG, "initializeCall() -> callType: $callType, language: $language, scope: $scope, topic: $topic")
+        Logger.debug(TAG, "initializeCall() -> $callType, $userId, $domain, $topic, $location, $language")
 
         when (callType) {
             CallType.TEXT -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    putIfValueNotNull("scope", scope)
+                    put("user_id", userId)
+                    putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)
-                    put("lang", language)
+
+                    if (location != null) {
+                        put("location", json {
+                            put("lat", location.latitude)
+                            put("lon", location.longitude)
+                        })
+                    }
+
+                    put("lang", language.key)
                 })
             }
             CallType.AUDIO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("user_id", userId)
                     put("media", "audio")
-                    putIfValueNotNull("scope", scope)
+                    putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)
-                    put("lang", language)
+
+                    if (location != null) {
+                        put("location", json {
+                            put("lat", location.latitude)
+                            put("lon", location.longitude)
+                        })
+                    }
+
+                    put("lang", language.key)
                 })
             }
             CallType.VIDEO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
+                    put("user_id", userId)
                     put("media", "video")
-                    putIfValueNotNull("scope", scope)
+                    putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)
-                    put("lang", language)
+
+                    if (location != null) {
+                        put("location", json {
+                            put("lat", location.latitude)
+                            put("lon", location.longitude)
+                        })
+                    }
+
+                    put("lang", language.key)
                 })
             }
         }
@@ -233,9 +260,9 @@ class SocketClient private constructor() : SocketRepository {
         })
     }
 
-    override fun sendUserMediaMessage(attachmentType: Attachment.Type, url: String) {
+    override fun sendUserMediaMessage(type: Media.Type, url: String) {
         emit(SocketEvent.Outgoing.USER_MESSAGE, json {
-            put(attachmentType.key, url)
+            put(type.key, url)
         })
     }
 
@@ -277,19 +304,19 @@ class SocketClient private constructor() : SocketRepository {
         socket?.off(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
     }
 
-    override fun sendMessage(webRTC: WebRTC?, action: Message.Action?) {
-        Logger.debug(TAG, "sendMessage() -> webRTC: $webRTC, action: $action")
+    override fun sendMessage(webRTCInfo: WebRTCInfo?, action: Message.Action?) {
+        Logger.debug(TAG, "sendMessage() -> webRTC: $webRTCInfo, action: $action")
 
         val messageObject = JSONObject()
 
         try {
-            if (webRTC != null) {
+            if (webRTCInfo != null) {
                 messageObject.put("rtc", json {
-                    put("type", webRTC.type.value)
-                    putIfValueNotNull("id", webRTC.id)
-                    putIfValueNotNull("label", webRTC.label)
-                    putIfValueNotNull("candidate", webRTC.candidate)
-                    putIfValueNotNull("sdp", webRTC.sdp)
+                    put("type", webRTCInfo.type.value)
+                    putIfValueNotNull("id", webRTCInfo.id)
+                    putIfValueNotNull("label", webRTCInfo.label)
+                    putIfValueNotNull("candidate", webRTCInfo.candidate)
+                    putIfValueNotNull("sdp", webRTCInfo.sdp)
                 })
             }
 
@@ -347,16 +374,21 @@ class SocketClient private constructor() : SocketRepository {
         })
     }
 
-    override fun sendFormFinalize(form: Form, sender: String?) {
+    override fun sendFormFinalize(form: Form, sender: String?, extraFields: List<JSONObject>?) {
         emit(SocketEvent.Outgoing.FORM_FINAL, json {
-            if (!sender.isNullOrBlank()) {
-                put("sender", sender)
-            }
+            putIfValueNotNull("sender", sender)
 
             put("form_id", form.id)
 
             val nodes = JSONArray()
             val fields = JSONObject()
+
+            extraFields?.forEach {
+                fields.put(
+                    it.getString("title"),
+                    json { put(it.getString("type"), it.getString("value")) }
+                )
+            }
 
             form.fields.forEach { field ->
                 if (field.isFlex) {
@@ -650,48 +682,48 @@ class SocketClient private constructor() : SocketRepository {
 
         if (rtcJsonObject != null) {
             when (rtcJsonObject.getStringOrNull("type")) {
-                WebRTC.Type.START?.value -> {
+                WebRTCInfo.Type.START?.value -> {
                     when (action) {
                         Message.Action.CALL_ACCEPT ->
-                            listenerInfo.webRTCListener?.onWebRTCCallAccept()
+                            listenerInfo.webRTCListener?.onCallAccept()
                         Message.Action.CALL_REDIRECT ->
-                            listenerInfo.webRTCListener?.onWebRTCCallRedirect()
+                            listenerInfo.webRTCListener?.onCallRedirect()
                         Message.Action.CALL_REDIAL -> {
                         }
                         else -> {
                         }
                     }
                 }
-                WebRTC.Type.PREPARE?.value ->
-                    listenerInfo.webRTCListener?.onWebRTCPrepare()
-                WebRTC.Type.READY?.value ->
-                    listenerInfo.webRTCListener?.onWebRTCReady()
-                WebRTC.Type.OFFER?.value -> {
-                    val type = WebRTC.Type.by(rtcJsonObject.getString("type"))
+                WebRTCInfo.Type.PREPARE?.value ->
+                    listenerInfo.webRTCListener?.onCallPrepare()
+                WebRTCInfo.Type.READY?.value ->
+                    listenerInfo.webRTCListener?.onCallReady()
+                WebRTCInfo.Type.OFFER?.value -> {
+                    val type = WebRTCInfo.Type.by(rtcJsonObject.getString("type"))
                     val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
-                        listenerInfo.webRTCListener?.onWebRTCOffer(WebRTCSessionDescription(type, sdp))
+                        listenerInfo.webRTCListener?.onCallOffer(SessionDescription(type, sdp))
                     }
                 }
-                WebRTC.Type.ANSWER?.value -> {
-                    val type = WebRTC.Type.by(rtcJsonObject.getString("type"))
+                WebRTCInfo.Type.ANSWER?.value -> {
+                    val type = WebRTCInfo.Type.by(rtcJsonObject.getString("type"))
                     val sdp = rtcJsonObject.getString("sdp")
 
                     if (type != null) {
-                        listenerInfo.webRTCListener?.onWebRTCAnswer(WebRTCSessionDescription(type, sdp))
+                        listenerInfo.webRTCListener?.onCallAnswer(SessionDescription(type, sdp))
                     }
                 }
-                WebRTC.Type.CANDIDATE?.value ->
-                    listenerInfo.webRTCListener?.onWebRTCIceCandidate(
-                        WebRTCIceCandidate(
+                WebRTCInfo.Type.CANDIDATE?.value ->
+                    listenerInfo.webRTCListener?.onIceCandidate(
+                        IceCandidate(
                             sdpMid = rtcJsonObject.getString("id"),
                             sdpMLineIndex = rtcJsonObject.getInt("label"),
                             sdp = rtcJsonObject.getString("candidate")
                         )
                     )
-                WebRTC.Type.HANGUP?.value ->
-                    listenerInfo.webRTCListener?.onWebRTCHangup()
+                WebRTCInfo.Type.HANGUP?.value ->
+                    listenerInfo.webRTCListener?.onHangup()
             }
             return@Listener
         }
@@ -701,12 +733,13 @@ class SocketClient private constructor() : SocketRepository {
             listenerInfo.basicListener?.onPendingUsersQueueCount(text, queued)
         }
 
-        val attachments = mutableListOf<Attachment>()
+        val attachments = mutableListOf<Media>()
         if (attachmentsJsonArray != null) {
             for (i in 0 until attachmentsJsonArray.length()) {
                 val attachment = attachmentsJsonArray[i] as? JSONObject?
                 attachments.add(
-                    Attachment(
+                    Media(
+                        id = -1,
                         title = attachment?.getStringOrNull("title"),
                         extension = findEnumBy { it.value == attachment?.getStringOrNull("ext") },
                         type = findEnumBy { it.key == attachment?.getStringOrNull("type") },
@@ -729,15 +762,15 @@ class SocketClient private constructor() : SocketRepository {
 
             val pair = if (!ext.isNullOrBlank()) {
                 if (!image.isNullOrBlank()) {
-                    Attachment.Type.IMAGE to image
+                    Media.Type.IMAGE to image
                 } else if (!audio.isNullOrBlank()) {
-                    Attachment.Type.AUDIO to audio
+                    Media.Type.AUDIO to audio
                 } else if (!video.isNullOrBlank()) {
-                    Attachment.Type.VIDEO to video
+                    Media.Type.VIDEO to video
                 } else if (!document.isNullOrBlank()) {
-                    Attachment.Type.DOCUMENT to document
+                    Media.Type.DOCUMENT to document
                 } else if (!file.isNullOrBlank()) {
-                    Attachment.Type.FILE to file
+                    Media.Type.FILE to file
                 } else {
                     null
                 }
@@ -746,6 +779,7 @@ class SocketClient private constructor() : SocketRepository {
             }
 
             media = Media(
+                id = -1,
                 title = name,
                 extension = findEnumBy { it.value == ext },
                 urlPath = pair?.second,
