@@ -10,6 +10,6 @@ interface WebRTCListener {
     fun onCallReady()
     fun onCallAnswer(sessionDescription: SessionDescription)
     fun onCallOffer(sessionDescription: SessionDescription)
-    fun onIceCandidate(iceCandidate: IceCandidate)
-    fun onHangup()
+    fun onRemoteIceCandidate(iceCandidate: IceCandidate)
+    fun onPeerHangupCall()
 }

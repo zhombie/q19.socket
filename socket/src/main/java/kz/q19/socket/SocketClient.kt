@@ -715,7 +715,7 @@ class SocketClient private constructor() : SocketRepository {
                     }
                 }
                 WebRTCInfo.Type.CANDIDATE?.value ->
-                    listenerInfo.webRTCListener?.onIceCandidate(
+                    listenerInfo.webRTCListener?.onRemoteIceCandidate(
                         IceCandidate(
                             sdpMid = rtcJsonObject.getString("id"),
                             sdpMLineIndex = rtcJsonObject.getInt("label"),
@@ -723,7 +723,7 @@ class SocketClient private constructor() : SocketRepository {
                         )
                     )
                 WebRTCInfo.Type.HANGUP?.value ->
-                    listenerInfo.webRTCListener?.onHangup()
+                    listenerInfo.webRTCListener?.onPeerHangupCall()
             }
             return@Listener
         }
