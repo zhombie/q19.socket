@@ -5,9 +5,9 @@ internal sealed class SocketEvent {
     object Incoming : SocketEvent() {
 //        const val CALL = "call"
 
-        const val CATEGORY_LIST = "category_list"
+        const val CARD102_UPDATE = "card102_update"
 
-        const val OPERATOR_GREET = "operator_greet"
+        const val CATEGORY_LIST = "category_list"
 
         const val FEEDBACK = "feedback"
 
@@ -17,6 +17,8 @@ internal sealed class SocketEvent {
         const val LOCATION_UPDATE = "location_update"
 
         const val MESSAGE = "message"
+
+        const val OPERATOR_GREET = "operator_greet"
 
         const val OPERATOR_TYPING = "operator_typing"
 

@@ -5,6 +5,9 @@ import kz.q19.domain.model.Location
 interface SocketLocationRepository {
     fun sendUserLocation(id: String, location: Location)
 
-    fun sendLocationSubscribe()
-    fun sendLocationUnsubscribe()
+    fun sendLocationUpdateSubscribe()
+    fun sendLocationUpdateUnsubscribe()
+
+    fun subscribeToCard102Update()
+    fun unsubscribeFromCard102Update()
 }

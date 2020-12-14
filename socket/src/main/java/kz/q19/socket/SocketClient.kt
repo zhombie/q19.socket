@@ -10,6 +10,7 @@ import kz.q19.domain.model.*
 import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
+import kz.q19.socket.model.Card102Status
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
@@ -75,10 +76,10 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.formListener = formListener
     }
 
-    override fun setLocationListener(locationListener: LocationListener?) {
-        Logger.debug(TAG, "setLocationListener() -> locationListener: $locationListener")
+    override fun setLocationListener(policeForceListener: PoliceForceListener?) {
+        Logger.debug(TAG, "setLocationListener() -> locationListener: $policeForceListener")
 
-        listenerInfo.locationListener = locationListener
+        listenerInfo.policeForceListener = policeForceListener
     }
 
     override fun removeAllListeners() {
@@ -98,11 +99,12 @@ class SocketClient private constructor() : SocketRepository {
 
         socket?.on(Socket.EVENT_CONNECT, onConnectListener)
 //        socket?.on(SocketEvent.Incoming.CALL, onCallListener)
-        socket?.on(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
+        socket?.on(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
         socket?.on(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
         socket?.on(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
         socket?.on(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
         socket?.on(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
+        socket?.on(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
         socket?.on(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
         socket?.on(SocketEvent.Incoming.MESSAGE, onMessageListener)
         socket?.on(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
@@ -290,16 +292,28 @@ class SocketClient private constructor() : SocketRepository {
         })
     }
 
-    override fun sendLocationSubscribe() {
-        Logger.debug(TAG, "sendLocationSubscribe()")
+    override fun subscribeToCard102Update() {
+        Logger.debug(TAG, "subscribeToCard102Update()")
+
+        socket?.on(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
+    }
+
+    override fun unsubscribeFromCard102Update() {
+        Logger.debug(TAG, "unsubscribeFromCard102Update()")
+
+        socket?.off(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
+    }
+
+    override fun sendLocationUpdateSubscribe() {
+        Logger.debug(TAG, "sendLocationUpdateSubscribe()")
 
         socket?.on(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
 
         emit(SocketEvent.Outgoing.LOCATION_SUBSCRIBE)
     }
 
-    override fun sendLocationUnsubscribe() {
-        Logger.debug(TAG, "sendLocationUnsubscribe()")
+    override fun sendLocationUpdateUnsubscribe() {
+        Logger.debug(TAG, "sendLocationUpdateUnsubscribe()")
 
         socket?.off(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
     }
@@ -447,26 +461,22 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.socketStateListener?.onConnect()
     }
 
-    private val onOperatorGreetListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_GREET}]: $args")
+    private val onCard102UpdateListener = Emitter.Listener { args ->
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.CARD102_UPDATE}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-//        Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
+        val status = data.getInt("status")
 
-//        val name = data.optString("name")
-        val fullName = data.optString("full_name")
+        val card102Status = Card102Status(status)
 
-        // Url path
-        val photo = data.optString("photo")
-
-        val text = data.optString("text")
-
-        Logger.debug(TAG, "listenerInfo.dialogListener: ${listenerInfo.dialogListener}")
-
-        listenerInfo.dialogListener?.onOperatorGreet(fullName, photo, text)
+        if (card102Status != null) {
+            listenerInfo.policeForceListener?.onCard102Update(card102Status)
+        } else {
+            Logger.debug(TAG, "Incorrect Card102 status: $status")
+        }
     }
 
     private val onFormInitListener = Emitter.Listener { args ->
@@ -527,6 +537,28 @@ class SocketClient private constructor() : SocketRepository {
 //        val success = data.optBoolean("success", false)
 
         listenerInfo.formListener?.onFormFinal(text = trackId ?: "")
+    }
+
+    private val onOperatorGreetListener = Emitter.Listener { args ->
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_GREET}]: $args")
+
+        if (args.size != 1) return@Listener
+
+        val data = args[0] as? JSONObject? ?: return@Listener
+
+//        Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
+
+//        val name = data.optString("name")
+        val fullName = data.optString("full_name")
+
+        // Url path
+        val photo = data.optString("photo")
+
+        val text = data.optString("text")
+
+        Logger.debug(TAG, "listenerInfo.dialogListener: ${listenerInfo.dialogListener}")
+
+        listenerInfo.dialogListener?.onOperatorGreet(fullName, photo, text)
     }
 
     private val onOperatorTypingListener = Emitter.Listener {
@@ -837,22 +869,42 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onLocationUpdate = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
+        Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
 
-        if (args.size != 1) return@Listener
+        val version = 2
 
-        val data = args[0] as? JSONObject? ?: return@Listener
+        if (version == 1) {
+            if (args.size != 1) return@Listener
 
-        Logger.debug(TAG, "[${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
+            val data = args[0] as? JSONObject? ?: return@Listener
 
-        val coordsJsonArray = data.optJSONArray("coords") ?: return@Listener
+            Logger.debug(TAG, "[${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
 
-        if (coordsJsonArray.length() == 2) {
-            val longitude = coordsJsonArray.getDouble(0)
-            val latitude = coordsJsonArray.getDouble(1)
-            listenerInfo.locationListener?.onLocationUpdate(
-                Location(longitude = longitude, latitude = latitude)
-            )
+            val coordsJsonArray = data.optJSONArray("coords") ?: return@Listener
+
+            if (coordsJsonArray.length() == 2) {
+                val longitude = coordsJsonArray.getDouble(0)
+                val latitude = coordsJsonArray.getDouble(1)
+                listenerInfo.policeForceListener?.onLocationUpdate(
+                    Location(longitude = longitude, latitude = latitude)
+                )
+            }
+        } else if (version == 2) {
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args: $args")
+
+            args.forEach { arg ->
+                Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] arg: $arg")
+
+                val data = arg as? JSONObject? ?: return@forEach
+
+                Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
+
+                val gpsCode = data.getLong("Gps_Code")
+                val x = data.getDouble("X")
+                val y = data.getDouble("Y")
+
+                listenerInfo.policeForceListener?.onLocationUpdate(gpsCode, x, y)
+            }
         }
     }
 

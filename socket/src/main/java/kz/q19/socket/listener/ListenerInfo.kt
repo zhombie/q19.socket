@@ -6,7 +6,7 @@ internal class ListenerInfo {
     var dialogListener: DialogListener? = null
     var formListener: FormListener? = null
     var webRTCListener: WebRTCListener? = null
-    var locationListener: LocationListener? = null
+    var policeForceListener: PoliceForceListener? = null
 
     fun clear() {
         socketStateListener = null
@@ -14,6 +14,6 @@ internal class ListenerInfo {
         dialogListener = null
         formListener = null
         webRTCListener = null
-        locationListener = null
+        policeForceListener = null
     }
 }
