@@ -8,7 +8,7 @@ interface SocketListenerRepository {
     fun setDialogListener(dialogListener: DialogListener?)
     fun setFormListener(formListener: FormListener?)
     fun setWebRTCListener(webRTCListener: WebRTCListener?)
-    fun setLocationListener(policeForceListener: PoliceForceListener?)
+    fun setPoliceForceListener(policeForceListener: PoliceForceListener?)
 
     fun removeAllListeners()
 }

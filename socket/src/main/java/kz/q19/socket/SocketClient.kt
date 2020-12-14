@@ -76,7 +76,7 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.formListener = formListener
     }
 
-    override fun setLocationListener(policeForceListener: PoliceForceListener?) {
+    override fun setPoliceForceListener(policeForceListener: PoliceForceListener?) {
         Logger.debug(TAG, "setLocationListener() -> locationListener: $policeForceListener")
 
         listenerInfo.policeForceListener = policeForceListener
@@ -404,12 +404,14 @@ class SocketClient private constructor() : SocketRepository {
                 )
             }
 
-            form.fields.forEach { field ->
+            form.fields?.forEach { field ->
+                val type = field.type ?: return@forEach
+
                 if (field.isFlex) {
                     nodes.put(json {
-                        put(field.type.value, field.value)
+                        put(type.value, field.value)
                         put(
-                            "${field.type.value}_info",
+                            "${type.value}_info",
                             json {
                                 putIfValueNotNull("extension", field.info?.extension?.value)
                                 putIfValueNotNull("width", field.info?.width)
@@ -425,7 +427,7 @@ class SocketClient private constructor() : SocketRepository {
                 } else {
                     val title = field.title
                     if (!title.isNullOrBlank()) {
-                        fields.put(title, json { put(field.type.value, field.value) })
+                        fields.put(title, json { put(type.value, field.value) })
                     }
                 }
             }
@@ -641,9 +643,9 @@ class SocketClient private constructor() : SocketRepository {
 
         Logger.debug(TAG, "listenerInfo.basicListener: ${listenerInfo.basicListener}")
 
-        var replyMarkup: Message.ReplyMarkup? = null
+        var replyMarkup: ReplyMarkup? = null
         if (replyMarkupJsonObject != null) {
-            val rows = mutableListOf<List<Message.ReplyMarkup.Button>>()
+            val rows = mutableListOf<List<ReplyMarkup.Button>>()
 
             val inlineKeyboard = replyMarkupJsonObject.optJSONArray("inline_keyboard")
             Logger.debug(TAG, "inlineKeyboard: $inlineKeyboard")
@@ -653,13 +655,13 @@ class SocketClient private constructor() : SocketRepository {
 
                     Logger.debug(TAG, "row: $row")
 
-                    val buttons = mutableListOf<Message.ReplyMarkup.Button>()
+                    val buttons = mutableListOf<ReplyMarkup.Button>()
                     for (j in 0 until (row?.length() ?: 0)) {
                         val button = row?.get(j) as? JSONObject?
                         Logger.debug(TAG, "button: $button")
 
                         buttons.add(
-                            Message.ReplyMarkup.Button(
+                            ReplyMarkup.Button(
                                 text = button?.getString("text") ?: "",
                                 callbackData = button?.getStringOrNull("callback_data"),
                                 url = button?.getStringOrNull("url")
@@ -670,7 +672,7 @@ class SocketClient private constructor() : SocketRepository {
                 }
             }
 
-            replyMarkup = Message.ReplyMarkup(rows)
+            replyMarkup = ReplyMarkup(rows)
         }
 
         var form: Form? = null
