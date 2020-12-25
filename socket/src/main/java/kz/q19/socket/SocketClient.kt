@@ -535,10 +535,16 @@ class SocketClient private constructor() : SocketRepository {
 
         val taskJson = data.optJSONObject("task")
         val trackId = taskJson?.getStringOrNull("track_id")
-//        val message = data.getStringOrNull("message")
-//        val success = data.optBoolean("success", false)
+        val taskId = taskJson?.getLongOrNull("task_id")
+        val message = data.getStringOrNull("message")
+        val success = data.optBoolean("success", false)
 
-        listenerInfo.formListener?.onFormFinal(text = trackId ?: "")
+        listenerInfo.formListener?.onFormFinal(
+            trackId = trackId,
+            taskId = taskId,
+            message = message,
+            success = success
+        )
     }
 
     private val onOperatorGreetListener = Emitter.Listener { args ->
