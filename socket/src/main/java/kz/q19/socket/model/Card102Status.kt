@@ -1,5 +1,8 @@
 package kz.q19.socket.model
 
+import androidx.annotation.Keep
+
+@Keep
 enum class Card102Status constructor(val status: Int) {
     NEW_CARD102(1),
     ASSIGNED_POLICE_FORCE(2),

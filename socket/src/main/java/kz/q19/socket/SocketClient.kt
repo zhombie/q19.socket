@@ -157,7 +157,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun initializeCall(
         callType: CallType,
-        userId: Long,
+        userId: Long?,
         domain: String?,
         topic: String?,
         location: Location?,
@@ -168,7 +168,7 @@ class SocketClient private constructor() : SocketRepository {
         when (callType) {
             CallType.TEXT -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("user_id", userId)
+                    putIfValueNotNull("user_id", userId)
                     putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)
 
@@ -184,7 +184,7 @@ class SocketClient private constructor() : SocketRepository {
             }
             CallType.AUDIO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("user_id", userId)
+                    putIfValueNotNull("user_id", userId)
                     put("media", "audio")
                     putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)
@@ -201,7 +201,7 @@ class SocketClient private constructor() : SocketRepository {
             }
             CallType.VIDEO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("user_id", userId)
+                    putIfValueNotNull("user_id", userId)
                     put("media", "video")
                     putIfValueNotNull("domain", domain)
                     putIfValueNotNull("topic", topic)

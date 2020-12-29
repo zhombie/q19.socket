@@ -18,7 +18,7 @@ interface SocketRepository : SocketListenerRepository,
     fun initializeCall(callType: CallType, language: Language, scope: String? = null)
     fun initializeCall(
         callType: CallType,
-        userId: Long,
+        userId: Long? = null,
         domain: String? = null,
         topic: String? = null,
         location: Location? = null,
