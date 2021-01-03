@@ -619,13 +619,13 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     private val onMessageListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.MESSAGE}]: $args")
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.MESSAGE}]: $args")
 
         if (args.size != 1) return@Listener
 
         val data = args[0] as? JSONObject? ?: return@Listener
 
-//        Logger.debug(TAG, "[MESSAGE] data: $data")
+        Logger.debug(TAG, "[${SocketEvent.Incoming.MESSAGE}] data: $data")
 
         val id = data.getStringOrNull("id")?.trim()
         val text = data.getStringOrNull("text")?.trim()
