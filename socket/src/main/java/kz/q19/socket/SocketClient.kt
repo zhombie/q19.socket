@@ -11,6 +11,7 @@ import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
 import kz.q19.socket.model.Card102Status
+import kz.q19.socket.model.LocationUpdate
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
@@ -898,21 +899,26 @@ class SocketClient private constructor() : SocketRepository {
                 )
             }
         } else if (version == 2) {
-            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args: $args")
+            // [{"Gps_Code":7170891,"X":71.4771061686837,"Y":51.1861201686837},{"Gps_Code":7171196,"X":71.43119816868371,"Y":51.1138291686837},{"Gps_Code":7170982,"X":71.5110101686837,"Y":51.1387631686837}]
 
-            args.forEach { arg ->
-                Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] arg: $arg")
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args.contentToString(): ${args.contentToString()}")
 
-                val data = arg as? JSONObject? ?: return@forEach
+            val data = args[0] as? JSONArray? ?: return@Listener
 
-                Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
 
-                val gpsCode = data.getLong("Gps_Code")
-                val x = data.getDouble("X")
-                val y = data.getDouble("Y")
+            val locationUpdates = mutableListOf<LocationUpdate>()
+            for (i in 0 until data.length()) {
+                (data[i] as? JSONObject?)?.run {
+                    val gpsCode = optLong("Gps_Code", -1)
+                    val x = optDouble("X", -1.0)
+                    val y = optDouble("Y", -1.0)
 
-                listenerInfo.policeForceListener?.onLocationUpdate(gpsCode, x, y)
+                    locationUpdates.add(LocationUpdate(gpsCode, x, y))
+                }
             }
+
+            listenerInfo.policeForceListener?.onLocationUpdate(locationUpdates)
         }
     }
 
