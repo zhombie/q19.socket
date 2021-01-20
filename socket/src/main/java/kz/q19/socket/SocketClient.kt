@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package kz.q19.socket
 
 import io.socket.client.Ack
@@ -7,23 +5,37 @@ import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import kz.q19.domain.model.*
+import kz.q19.domain.model.call.CallType
+import kz.q19.domain.model.form.Form
+import kz.q19.domain.model.geo.Location
+import kz.q19.domain.model.keyboard.Keyboard
+import kz.q19.domain.model.keyboard.button.Button
+import kz.q19.domain.model.keyboard.button.CallbackButton
+import kz.q19.domain.model.keyboard.button.RatingButton
+import kz.q19.domain.model.keyboard.button.UrlButton
+import kz.q19.domain.model.language.Language
+import kz.q19.domain.model.media.Media
+import kz.q19.domain.model.message.CallAction
+import kz.q19.domain.model.message.Category
+import kz.q19.domain.model.message.Message
+import kz.q19.domain.model.message.QRTCAction
 import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
 import kz.q19.socket.model.Card102Status
 import kz.q19.socket.model.LocationUpdate
+import kz.q19.socket.model.Sender
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
 import kz.q19.utils.json.*
 import org.json.JSONArray
-import org.json.JSONException
 import org.json.JSONObject
 
 class SocketClient private constructor() : SocketRepository {
 
     companion object {
-        private const val TAG = "SocketRepositoryImpl"
+        private val TAG = SocketClient::class.java.simpleName
 
         @Volatile
         private var INSTANCE: SocketClient? = null
@@ -35,7 +47,7 @@ class SocketClient private constructor() : SocketRepository {
         }
     }
 
-    var socket: Socket? = null
+    private var socket: Socket? = null
 
     private val language: String
         get() {
@@ -43,44 +55,42 @@ class SocketClient private constructor() : SocketRepository {
             return language.key
         }
 
-    private var lastActiveTime: Long = -1L
-
     private val listenerInfo: ListenerInfo by lazy { ListenerInfo() }
 
-    override fun setSocketStateListener(socketStateListener: SocketStateListener?) {
-        Logger.debug(TAG, "setSocketStateListener() -> socketStateListener: $socketStateListener")
+    override fun setSocketStateListener(listener: SocketStateListener?) {
+        Logger.debug(TAG, "setSocketStateListener() -> listener: $listener")
 
-        listenerInfo.socketStateListener = socketStateListener
+        listenerInfo.socketStateListener = listener
     }
 
-    override fun setBasicListener(basicListener: BasicListener?) {
-        Logger.debug(TAG, "setBasicListener() -> basicListener: $basicListener")
+    override fun setChatBotListener(listener: ChatBotListener?) {
+        Logger.debug(TAG, "setChatBotListener() -> listener: $listener")
 
-        listenerInfo.basicListener = basicListener
+        listenerInfo.chatBotListener = listener
     }
 
-    override fun setWebRTCListener(webRTCListener: WebRTCListener?) {
-        Logger.debug(TAG, "setWebRTCListener() -> webRTCListener: $webRTCListener")
+    override fun setWebRTCListener(listener: WebRTCListener?) {
+        Logger.debug(TAG, "setWebRTCListener() -> listener: $listener")
 
-        listenerInfo.webRTCListener = webRTCListener
+        listenerInfo.webRTCListener = listener
     }
 
-    override fun setDialogListener(dialogListener: DialogListener?) {
-        Logger.debug(TAG, "setDialogListener() -> dialogListener: $dialogListener")
+    override fun setDialogListener(listener: DialogListener?) {
+        Logger.debug(TAG, "setDialogListener() -> listener: $listener")
 
-        listenerInfo.dialogListener = dialogListener
+        listenerInfo.dialogListener = listener
     }
 
-    override fun setFormListener(formListener: FormListener?) {
-        Logger.debug(TAG, "setFormListener() -> formListener: $formListener")
+    override fun setFormListener(listener: FormListener?) {
+        Logger.debug(TAG, "setFormListener() -> listener: $listener")
 
-        listenerInfo.formListener = formListener
+        listenerInfo.formListener = listener
     }
 
-    override fun setPoliceForceListener(policeForceListener: PoliceForceListener?) {
-        Logger.debug(TAG, "setLocationListener() -> locationListener: $policeForceListener")
+    override fun setARMListener(listener: ARMListener?) {
+        Logger.debug(TAG, "setLocationListener() -> listener: $listener")
 
-        listenerInfo.policeForceListener = policeForceListener
+        listenerInfo.armListener = listener
     }
 
     override fun removeAllListeners() {
@@ -95,68 +105,125 @@ class SocketClient private constructor() : SocketRepository {
         val options = IO.Options()
         options.reconnection = true
         options.reconnectionAttempts = 3
+        options.reconnectionDelayMax = 3000L
 
         socket = IO.socket(url, options)
-
-        socket?.on(Socket.EVENT_CONNECT, onConnectListener)
-//        socket?.on(SocketEvent.Incoming.CALL, onCallListener)
-        socket?.on(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
-        socket?.on(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
-        socket?.on(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
-        socket?.on(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
-        socket?.on(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
-        socket?.on(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
-        socket?.on(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
-        socket?.on(SocketEvent.Incoming.MESSAGE, onMessageListener)
-        socket?.on(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
-        socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
         socket?.connect()
     }
 
+    override fun registerAllEventListeners() {
+        Logger.debug(TAG, "registerAllEventListeners()")
+
+        registerSocketConnectEventListener()
+        registerMessageEventListener()
+        registerUsersQueueEventListener()
+        registerCallAgentGreetEventListener()
+        registerCallAgentTypingEventListener()
+        registerCard102UpdateEventListener()
+        registerUserDialogFeedbackEventListener()
+        registerFormInitializeEventListener()
+        registerFormFinalizeEventListener()
+        registerSocketDisconnectEventListener()
+    }
+
+    override fun unregisterAllEventListeners() {
+        Logger.debug(TAG, "unregisterAllEventListeners()")
+
+        socket?.off()
+    }
+
+    override fun registerSocketConnectEventListener() =
+        registerEventListener(Socket.EVENT_CONNECT, onConnectListener)
+
+    override fun unregisterSocketConnectEventListener() =
+        unregisterEventListener(Socket.EVENT_CONNECT, onConnectListener)
+
+    override fun registerMessageEventListener() =
+        registerEventListener(SocketEvent.Incoming.MESSAGE, onMessageListener)
+
+    override fun unregisterMessageEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.MESSAGE, onMessageListener)
+
+    override fun registerChatBotDashboardEventListener() =
+        registerEventListener(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
+
+    override fun unregisterChatBotDashboardEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
+
+    override fun registerUsersQueueEventListener() =
+        registerEventListener(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
+
+    override fun unregisterUsersQueueEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
+
+    override fun registerCallAgentGreetEventListener() =
+        registerEventListener(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
+
+    override fun unregisterCallAgentGreetEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
+
+    override fun registerCallAgentTypingEventListener() =
+        registerEventListener(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
+
+    override fun unregisterCallAgentTypingEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
+
+    override fun registerCard102UpdateEventListener() =
+        registerEventListener(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
+
+    override fun unregisterCard102UpdateEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
+
+    override fun registerUserDialogFeedbackEventListener() =
+        registerEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
+
+    override fun unregisterUserDialogFeedbackEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
+
+    override fun registerFormInitializeEventListener() =
+        registerEventListener(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
+
+    override fun unregisterFormInitializeEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
+
+    override fun registerFormFinalizeEventListener() =
+        registerEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
+
+    override fun unregisterFormFinalizeEventListener() =
+        unregisterEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
+
+    override fun registerSocketDisconnectEventListener() =
+        registerEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
+
+    override fun unregisterSocketDisconnectEventListener() =
+        unregisterEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
+
+    private fun registerEventListener(event: String, listener: Emitter.Listener) {
+        Logger.debug(TAG, "registerEventListener() -> $event, $listener")
+        socket?.on(event, listener)
+    }
+
+    private fun unregisterEventListener(event: String, listener: Emitter.Listener) {
+        Logger.debug(TAG, "unregisterEventListener() -> $event, $listener")
+        socket?.off(event, listener)
+    }
+
     override fun release() {
+        Logger.debug(TAG, "release()")
+
         socket?.off()
         socket?.disconnect()
         socket = null
     }
 
-    override fun getLastActiveTime(): Long {
-        return lastActiveTime
-    }
+    override fun getId(): String? = socket?.id()
 
     override fun isConnected(): Boolean {
         return socket?.connected() ?: false
     }
 
-    override fun initializeCall(callType: CallType, language: Language, scope: String?) {
-        Logger.debug(TAG, "initializeCall() -> callType: $callType, language: $language, scope: $scope")
-
-        when (callType) {
-            CallType.TEXT -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("video", false)
-                    putIfValueNotNull("scope", scope)
-                    put("lang", language)
-                })
-            }
-            CallType.AUDIO -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("audio", true)
-                    putIfValueNotNull("scope", scope)
-                    put("lang", language)
-                })
-            }
-            CallType.VIDEO -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    put("video", true)
-                    putIfValueNotNull("scope", scope)
-                    put("lang", language)
-                })
-            }
-        }
-    }
-
-    override fun initializeCall(
+    override fun sendCallInitialization(
         callType: CallType,
         userId: Long?,
         domain: String?,
@@ -181,7 +248,7 @@ class SocketClient private constructor() : SocketRepository {
                     }
 
                     put("lang", language.key)
-                })
+                }) {}
             }
             CallType.AUDIO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
@@ -198,7 +265,7 @@ class SocketClient private constructor() : SocketRepository {
                     }
 
                     put("lang", language.key)
-                })
+                }) {}
             }
             CallType.VIDEO -> {
                 emit(SocketEvent.Outgoing.INITIALIZE, json {
@@ -215,29 +282,29 @@ class SocketClient private constructor() : SocketRepository {
                     }
 
                     put("lang", language.key)
-                })
+                }) {}
             }
         }
     }
 
-    override fun getParentCategories() {
-        getCategories(parentId = Category.NO_PARENT_ID)
+    override fun requestParentCategories() {
+        requestCategories(parentId = Category.NO_PARENT_ID)
     }
 
-    override fun getCategories(parentId: Long) {
+    override fun requestCategories(parentId: Long) {
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_category_list")
             put("parent_id", parentId)
             put("lang", language)
-        })
+        }) {}
     }
 
-    override fun getResponse(id: Long) {
+    override fun requestResponse(id: Long) {
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_response")
             put("id", id)
             put("lang", language)
-        })
+        }) {}
     }
 
     override fun sendUserLanguage(language: Language) {
@@ -245,113 +312,95 @@ class SocketClient private constructor() : SocketRepository {
 
         emit(SocketEvent.Outgoing.USER_LANGUAGE, json {
             put("language", language.key)
-        })
+        }) {}
     }
 
     override fun sendUserMessage(message: String) {
         Logger.debug(TAG, "sendUserMessage() -> message: $message")
-
-        if (message.isBlank()) {
-            return
-        }
 
         val text = message.trim()
 
         emit(SocketEvent.Outgoing.USER_MESSAGE, json {
             put("text", text)
             put("lang", language)
-        })
+        }) {}
     }
 
     override fun sendUserMediaMessage(type: Media.Type, url: String) {
         emit(SocketEvent.Outgoing.USER_MESSAGE, json {
             put(type.key, url)
-        })
+        }) {}
     }
 
-    override fun sendUserFeedback(rating: Int, chatId: Long) {
+    override fun sendUserDialogFeedback(rating: Int, chatId: Long) {
         emit(SocketEvent.Outgoing.USER_FEEDBACK, json {
             put("r", rating)
             put("chat_id", chatId)
-        })
+        }) {}
     }
 
-    override fun sendUserLocation(id: String, location: Location) {
-        Logger.debug(TAG, "sendUserLocation() -> location: $location")
-
-        emit(SocketEvent.Outgoing.USER_LOCATION, json {
-            put("id", id)
-            put("provider", location.provider)
-            put("latitude", location.latitude)
-            put("longitude", location.longitude)
-            put("bearing", location.bearing)
-            put("bearingAccuracyDegrees", location.bearingAccuracyDegrees)
-            put("xAccuracyMeters", location.xAccuracyMeters)
-            put("yAccuracyMeters", location.yAccuracyMeters)
-            put("speed", location.speed)
-            put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
-        })
-    }
-
-    override fun subscribeToCard102Update() {
-        Logger.debug(TAG, "subscribeToCard102Update()")
-
-        socket?.on(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
-    }
-
-    override fun unsubscribeFromCard102Update() {
-        Logger.debug(TAG, "unsubscribeFromCard102Update()")
-
-        socket?.off(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
-    }
-
-    override fun sendLocationUpdateSubscribe() {
-        Logger.debug(TAG, "sendLocationUpdateSubscribe()")
+    override fun sendLocationUpdateSubscription() {
+        Logger.debug(TAG, "sendLocationUpdateSubscription()")
 
         socket?.on(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
 
-        emit(SocketEvent.Outgoing.LOCATION_SUBSCRIBE)
+        emit(SocketEvent.Outgoing.LOCATION_SUBSCRIBE) {}
     }
 
-    override fun sendLocationUpdateUnsubscribe() {
-        Logger.debug(TAG, "sendLocationUpdateUnsubscribe()")
+    override fun sendLocationUpdateUnsubscription() {
+        Logger.debug(TAG, "sendLocationUpdateUnsubscription()")
+
+        emit(SocketEvent.Outgoing.LOCATION_UNSUBSCRIBE) {}
 
         socket?.off(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
     }
 
-    override fun sendMessage(webRTCInfo: WebRTCInfo?, action: Message.Action?) {
-        Logger.debug(TAG, "sendMessage() -> webRTC: $webRTCInfo, action: $action")
+    override fun sendCallAction(action: CallAction) {
+        Logger.debug(TAG, "sendCallAction() -> $action")
 
-        val messageObject = JSONObject()
-
-        try {
-            if (webRTCInfo != null) {
-                messageObject.put("rtc", json {
-                    put("type", webRTCInfo.type.value)
-                    putIfValueNotNull("id", webRTCInfo.id)
-                    putIfValueNotNull("label", webRTCInfo.label)
-                    putIfValueNotNull("candidate", webRTCInfo.candidate)
-                    putIfValueNotNull("sdp", webRTCInfo.sdp)
-                })
-            }
-
-            if (action != null) {
-                messageObject.put("action", action.value)
-            }
-
-            messageObject.put("lang", language)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-            Logger.error(TAG, e)
-        }
-
-        Logger.debug(TAG, "sendMessage() -> messageObject: $messageObject")
-
-        emit(SocketEvent.Outgoing.MESSAGE, messageObject)
+        emit(SocketEvent.Outgoing.MESSAGE, json {
+            put("action", action.value)
+        }) {}
     }
 
-    override fun sendMessage(id: String, location: Location) {
-        Logger.debug(TAG, "sendMessage() -> id: $id, location: $location")
+    override fun sendQRTCAction(action: QRTCAction) {
+        Logger.debug(TAG, "sendQRTCAction() -> $action")
+
+        emit(SocketEvent.Outgoing.MESSAGE, json {
+            put("rtc", json {
+                put("type", action.value)
+            })
+        }) {}
+    }
+
+    override fun sendLocalSessionDescription(sessionDescription: SessionDescription) {
+        Logger.debug(TAG, "sendSessionDescription() -> $sessionDescription")
+
+        emit(SocketEvent.Outgoing.MESSAGE, json {
+            put("rtc", json {
+                put("type", when (sessionDescription.type) {
+                    SessionDescription.Type.OFFER -> "offer"
+                    SessionDescription.Type.ANSWER -> "answer"
+                })
+                put("sdp", sessionDescription.description)
+            })
+        }) {}
+    }
+
+    override fun sendLocalIceCandidate(iceCandidate: IceCandidate) {
+        Logger.debug(TAG, "sendIceCandidate() -> $iceCandidate")
+
+        emit(SocketEvent.Outgoing.MESSAGE, json {
+            put("rtc", json {
+                put("id", iceCandidate.sdpMid)
+                put("label", iceCandidate.sdpMLineIndex)
+                put("candidate", iceCandidate.sdp)
+            })
+        }) {}
+    }
+
+    override fun sendUserLocation(id: String, location: Location) {
+        Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
         emit(SocketEvent.Outgoing.MESSAGE, json {
             put("action", "location")
@@ -365,7 +414,7 @@ class SocketClient private constructor() : SocketRepository {
             put("yAccuracyMeters", location.yAccuracyMeters)
             put("speed", location.speed)
             put("speedAccuracyMetersPerSecond", location.speedAccuracyMetersPerSecond)
-        })
+        }) {}
     }
 
     override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
@@ -374,45 +423,40 @@ class SocketClient private constructor() : SocketRepository {
             put("email", email)
             put("phone", phone)
             put("res", '1')
-        })
+        }) {}
     }
 
     override fun sendExternal(callbackData: String?) {
         emit(SocketEvent.Outgoing.EXTERNAL, json {
             put("callback_data", callbackData)
-        })
+        }) {}
     }
 
     override fun sendFormInitialize(formId: Long) {
         emit(SocketEvent.Outgoing.FORM_INIT, json {
             put("form_id", formId)
-        })
+        }) {}
     }
 
-    override fun sendFormFinalize(form: Form, sender: String?, extraFields: List<JSONObject>?) {
+    override fun sendFormFinalize(sender: Sender?, form: Form, extraFields: List<Form.Field>) {
         emit(SocketEvent.Outgoing.FORM_FINAL, json {
-            putIfValueNotNull("sender", sender)
+            putIfValueNotNull("sender", sender?.get())
 
             put("form_id", form.id)
 
             val nodes = JSONArray()
             val fields = JSONObject()
 
-            extraFields?.forEach {
-                fields.put(
-                    it.getString("title"),
-                    json { put(it.getString("type"), it.getString("value")) }
-                )
+            extraFields.forEach {
+                fields.put(it.title, json { put(it.type.key, it.value) })
             }
 
-            form.fields?.forEach { field ->
-                val type = field.type ?: return@forEach
-
-                if (field.isFlex) {
+            form.fields.forEach { field ->
+                if (field.isFlexible) {
                     nodes.put(json {
-                        put(type.value, field.value)
+                        put(field.type.key, field.value)
                         put(
-                            "${type.value}_info",
+                            "${field.type.key}_info",
                             json {
                                 putIfValueNotNull("extension", field.info?.extension?.value)
                                 putIfValueNotNull("width", field.info?.width)
@@ -427,8 +471,8 @@ class SocketClient private constructor() : SocketRepository {
                     })
                 } else {
                     val title = field.title
-                    if (!title.isNullOrBlank()) {
-                        fields.put(title, json { put(type.value, field.value) })
+                    if (title.isNotBlank()) {
+                        fields.put(title, json { put(field.type.key, field.value) })
                     }
                 }
             }
@@ -437,471 +481,499 @@ class SocketClient private constructor() : SocketRepository {
                 put("nodes", nodes)
                 put("fields", fields)
             })
-        })
+        }) {}
     }
 
     override fun sendCancel() {
-        emit(SocketEvent.Outgoing.CANCEL)
+        emit(SocketEvent.Outgoing.CANCEL) {}
     }
 
-    override fun sendCancelPendingCall() {
-        emit(SocketEvent.Outgoing.CANCEL_PENDING_CALL)
+    override fun sendPendingCallCancellation() {
+        emit(SocketEvent.Outgoing.CANCEL_PENDING_CALL) {}
     }
 
-    private fun emit(event: String, jsonObject: JSONObject? = null): Emitter? {
+    private fun emit(event: String, jsonObject: JSONObject? = null, ack: (args: Array<Any>) -> Unit): Emitter? {
         return socket?.emit(
             event,
             jsonObject,
             Ack { args ->
                 Logger.debug(TAG, "args: $args")
+                ack(args)
             }
         )
     }
-    
-    private val onConnectListener = Emitter.Listener {
-        Logger.debug(TAG, "event [${Socket.EVENT_CONNECT}]")
 
-        listenerInfo.socketStateListener?.onConnect()
-    }
+    private val onConnectListener by lazy {
+        Emitter.Listener {
+            Logger.debug(TAG, "event [${Socket.EVENT_CONNECT}]")
 
-    private val onCard102UpdateListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.CARD102_UPDATE}]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-        val status = data.getInt("status")
-
-        val card102Status = Card102Status(status)
-
-        if (card102Status != null) {
-            listenerInfo.policeForceListener?.onCard102Update(card102Status)
-        } else {
-            Logger.debug(TAG, "Incorrect Card102 status: $status")
+            listenerInfo.socketStateListener?.onSocketConnect()
         }
     }
 
-    private val onFormInitListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_INIT}]: $args")
+    private val onCard102UpdateListener by lazy {
+        Emitter.Listener { args ->
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.CARD102_UPDATE}]: $args")
 
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-//        Logger.debug(TAG, "[FORM_INIT] data: $data")
-
-        val formJson = data.getJSONObject("form")
-        val formFieldsJsonArray = data.getJSONArray("form_fields")
-
-        val fields = mutableListOf<Form.Field>()
-        for (i in 0 until formFieldsJsonArray.length()) {
-            val formFieldJson = formFieldsJsonArray[i] as JSONObject
-            fields.add(
-                Form.Field(
-                    id = formFieldJson.getLong("id"),
-                    title = formFieldJson.getStringOrNull("title"),
-                    prompt = formFieldJson.getStringOrNull("prompt"),
-                    type = findEnumBy { it.value == formFieldJson.getString("type") } ?: Form.Field.Type.TEXT,
-                    default = formFieldJson.getStringOrNull("default"),
-                    formId = formFieldJson.getLong("form_id"),
-                    configs = null,
-                    level = formFieldJson.optInt("level", -1),
-                    value = null
-                )
-            )
-        }
-
-        val form = Form(
-            id = formJson.getLong("id"),
-            title = formJson.getStringOrNull("title"),
-            isFlex = formJson.optInt("is_flex"),
-            prompt = formJson.getStringOrNull("prompt"),
-            fields = fields
-        )
-
-        Logger.debug(TAG, "listenerInfo.formListener: ${listenerInfo.formListener}")
-
-        listenerInfo.formListener?.onFormInit(form)
-    }
-
-    private val onFormFinalListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_FINAL}]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-        Logger.debug(TAG, "[FORM_FINAL] data: $data")
-
-        val taskJson = data.optJSONObject("task")
-        val trackId = taskJson?.getStringOrNull("track_id")
-        val taskId = taskJson?.getLongOrNull("task_id")
-        val message = data.getStringOrNull("message")
-        val success = data.optBoolean("success", false)
-
-        listenerInfo.formListener?.onFormFinal(
-            trackId = trackId,
-            taskId = taskId,
-            message = message,
-            success = success
-        )
-    }
-
-    private val onOperatorGreetListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_GREET}]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-//        Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
-
-//        val name = data.optString("name")
-        val fullName = data.optString("full_name")
-
-        // Url path
-        val photo = data.optString("photo")
-
-        val text = data.optString("text")
-
-        Logger.debug(TAG, "listenerInfo.dialogListener: ${listenerInfo.dialogListener}")
-
-        listenerInfo.dialogListener?.onOperatorGreet(fullName, photo, text)
-    }
-
-    private val onOperatorTypingListener = Emitter.Listener {
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_TYPING}]")
-    }
-
-    private val onFeedbackListener = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.FEEDBACK}]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-//        Logger.debug(TAG, "[FEEDBACK] data: $data")
-
-        val buttonsJson = data.optJSONArray("buttons")
-
-        val text = data.optString("text")
-//        val chatId = feedback.optLong("chat_id")
-
-        if (buttonsJson != null) {
-            val ratingButtons = mutableListOf<RatingButton>()
-            for (i in 0 until buttonsJson.length()) {
-                val button = buttonsJson[i] as JSONObject
-                ratingButtons.add(
-                    RatingButton(
-                        button.optString("title"),
-                        button.optString("payload")
-                    )
-                )
-            }
-
-            listenerInfo.dialogListener?.onFeedback(text, ratingButtons)
-        }
-    }
-
-    private val onUserQueueListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [USER_QUEUE]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-//        Logger.debug(TAG, "[USER_QUEUE] data: $data")
-
-        val count = data.getInt("count")
-//            val channel = userQueue.getInt("channel")
-
-        listenerInfo.basicListener?.onPendingUsersQueueCount(count = count)
-    }
-
-    private val onMessageListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [${SocketEvent.Incoming.MESSAGE}]: $args")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-        Logger.debug(TAG, "[${SocketEvent.Incoming.MESSAGE}] data: $data")
-
-        val id = data.getStringOrNull("id")?.trim()
-        val text = data.getStringOrNull("text")?.trim()
-        val noOnline = data.optBoolean("no_online")
-        val noResults = data.optBoolean("no_results")
-//        val id = message.optString("id")
-        val action = findEnumBy<Message.Action> { it.value == data.getStringOrNull("action") }
-        val time = data.optLong("time")
-        val sender = data.getStringOrNull("sender")
-        val from = data.getStringOrNull("from")
-        val mediaJsonObject = data.optJSONObject("media")
-        val rtcJsonObject = data.optJSONObject("rtc")
-        val fuzzyTask = data.optBoolean("fuzzy_task")
-//        val form = message.optJSONObject("form")
-        val attachmentsJsonArray = data.optJSONArray("attachments")
-        val replyMarkupJsonObject = data.optJSONObject("reply_markup")
-        val formJsonObject = data.optJSONObject("form")
-
-//        Logger.debug(TAG, "replyMarkupJsonObject: $replyMarkupJsonObject")
-//        Logger.debug(TAG, "action: $action")
-
-        Logger.debug(TAG, "listenerInfo.basicListener: ${listenerInfo.basicListener}")
-
-        var replyMarkup: ReplyMarkup? = null
-        if (replyMarkupJsonObject != null) {
-            val rows = mutableListOf<List<ReplyMarkup.Button>>()
-
-            val inlineKeyboard = replyMarkupJsonObject.optJSONArray("inline_keyboard")
-            Logger.debug(TAG, "inlineKeyboard: $inlineKeyboard")
-            if (inlineKeyboard != null) {
-                for (i in 0 until inlineKeyboard.length()) {
-                    val row = inlineKeyboard[i] as? JSONArray?
-
-                    Logger.debug(TAG, "row: $row")
-
-                    val buttons = mutableListOf<ReplyMarkup.Button>()
-                    for (j in 0 until (row?.length() ?: 0)) {
-                        val button = row?.get(j) as? JSONObject?
-                        Logger.debug(TAG, "button: $button")
-
-                        buttons.add(
-                            ReplyMarkup.Button(
-                                text = button?.getString("text") ?: "",
-                                callbackData = button?.getStringOrNull("callback_data"),
-                                url = button?.getStringOrNull("url")
-                            )
-                        )
-                    }
-                    rows.add(buttons)
-                }
-            }
-
-            replyMarkup = ReplyMarkup(rows)
-        }
-
-        var form: Form? = null
-        if (formJsonObject != null && formJsonObject.has("id")) {
-            form = Form(
-                id = formJsonObject.optLong("id"),
-                title = formJsonObject.getStringOrNull("title"),
-                prompt = formJsonObject.getStringOrNull("prompt")
-            )
-        }
-
-        if (noResults && from.isNullOrBlank() && sender.isNullOrBlank() && action == null && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.basicListener?.onNoResultsFound(text, time)
-            if (isHandled == true) return@Listener
-        }
-
-        if (fuzzyTask && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.basicListener?.onFuzzyTaskOffered(text, time)
-            if (isHandled == true) return@Listener
-        }
-
-        if (noOnline && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.basicListener?.onNoOnlineOperators(text)
-            if (isHandled == true) return@Listener
-        }
-
-        if (action == Message.Action.CHAT_TIMEOUT && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.dialogListener?.onChatTimeout(text, time)
-            if (isHandled == true) return@Listener
-        }
-
-        if (action == Message.Action.OPERATOR_DISCONNECT && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.dialogListener?.onOperatorDisconnected(text, time)
-            if (isHandled == true) return@Listener
-        }
-
-        if (action == Message.Action.REDIRECT && !text.isNullOrBlank()) {
-            val isHandled = listenerInfo.dialogListener?.onUserRedirected(text, time)
-            if (isHandled == true) return@Listener
-        }
-
-        if (rtcJsonObject != null) {
-            when (rtcJsonObject.getStringOrNull("type")) {
-                WebRTCInfo.Type.START?.value -> {
-                    when (action) {
-                        Message.Action.CALL_ACCEPT ->
-                            listenerInfo.webRTCListener?.onCallAccept()
-                        Message.Action.CALL_REDIRECT ->
-                            listenerInfo.webRTCListener?.onCallRedirect()
-                        Message.Action.CALL_REDIAL -> {
-                        }
-                        else -> {
-                        }
-                    }
-                }
-                WebRTCInfo.Type.PREPARE?.value ->
-                    listenerInfo.webRTCListener?.onCallPrepare()
-                WebRTCInfo.Type.READY?.value ->
-                    listenerInfo.webRTCListener?.onCallReady()
-                WebRTCInfo.Type.OFFER?.value -> {
-                    val type = WebRTCInfo.Type.by(rtcJsonObject.getString("type"))
-                    val sdp = rtcJsonObject.getString("sdp")
-
-                    if (type != null) {
-                        listenerInfo.webRTCListener?.onCallOffer(SessionDescription(type, sdp))
-                    }
-                }
-                WebRTCInfo.Type.ANSWER?.value -> {
-                    val type = WebRTCInfo.Type.by(rtcJsonObject.getString("type"))
-                    val sdp = rtcJsonObject.getString("sdp")
-
-                    if (type != null) {
-                        listenerInfo.webRTCListener?.onCallAnswer(SessionDescription(type, sdp))
-                    }
-                }
-                WebRTCInfo.Type.CANDIDATE?.value ->
-                    listenerInfo.webRTCListener?.onRemoteIceCandidate(
-                        IceCandidate(
-                            sdpMid = rtcJsonObject.getString("id"),
-                            sdpMLineIndex = rtcJsonObject.getInt("label"),
-                            sdp = rtcJsonObject.getString("candidate")
-                        )
-                    )
-                WebRTCInfo.Type.HANGUP?.value ->
-                    listenerInfo.webRTCListener?.onPeerHangupCall()
-            }
-            return@Listener
-        }
-
-        if (!data.isNull("queued")) {
-            val queued = data.optInt("queued")
-            listenerInfo.basicListener?.onPendingUsersQueueCount(text, queued)
-        }
-
-        val attachments = mutableListOf<Media>()
-        if (attachmentsJsonArray != null) {
-            for (i in 0 until attachmentsJsonArray.length()) {
-                val attachment = attachmentsJsonArray[i] as? JSONObject?
-                attachments.add(
-                    Media(
-                        id = -1,
-                        title = attachment?.getStringOrNull("title"),
-                        extension = findEnumBy { it.value == attachment?.getStringOrNull("ext") },
-                        type = findEnumBy { it.key == attachment?.getStringOrNull("type") },
-                        urlPath = attachment?.getStringOrNull("url")
-                    )
-                )
-            }
-        }
-
-        var media: Media? = null
-        if (mediaJsonObject != null) {
-            val image = mediaJsonObject.getStringOrNull("image")
-            val audio = mediaJsonObject.getStringOrNull("audio")
-            val video = mediaJsonObject.getStringOrNull("video")
-            val document = mediaJsonObject.getStringOrNull("document")
-            val file = mediaJsonObject.getStringOrNull("file")
-
-            val name = mediaJsonObject.getStringOrNull("name")
-            val ext = mediaJsonObject.getStringOrNull("ext")
-
-            val pair = if (!ext.isNullOrBlank()) {
-                if (!image.isNullOrBlank()) {
-                    Media.Type.IMAGE to image
-                } else if (!audio.isNullOrBlank()) {
-                    Media.Type.AUDIO to audio
-                } else if (!video.isNullOrBlank()) {
-                    Media.Type.VIDEO to video
-                } else if (!document.isNullOrBlank()) {
-                    Media.Type.DOCUMENT to document
-                } else if (!file.isNullOrBlank()) {
-                    Media.Type.FILE to file
-                } else {
-                    null
-                }
-            } else {
-                null
-            }
-
-            media = Media(
-                id = -1,
-                title = name,
-                extension = findEnumBy { it.value == ext },
-                urlPath = pair?.second,
-                type = pair?.first
-            )
-        }
-
-        listenerInfo.basicListener?.onMessage(
-            message = Message(
-                id = id,
-                type = Message.Type.INCOMING,
-                text = text,
-                replyMarkup = replyMarkup,
-                media = media,
-                attachments = attachments,
-                form = form,
-                timestamp = time
-            )
-        )
-    }
-
-    private val onCategoryListListener = Emitter.Listener { args ->
-//        Logger.debug(TAG, "event [${SocketEvent.Incoming.CATEGORY_LIST}]")
-
-        if (args.size != 1) return@Listener
-
-        val data = args[0] as? JSONObject? ?: return@Listener
-
-        val categoryListJson = data.optJSONArray("category_list") ?: return@Listener
-
-//        Logger.debug(TAG, "categoryList: $data")
-
-        fun parse(jsonObject: JSONObject): Category {
-            return Category(
-                id = jsonObject.optLong("id"),
-                title = jsonObject.optString("title").trim(),
-                language = findEnumBy { it.value == jsonObject.optLong("lang") } ?: Language.ID.RU,
-                parentId = jsonObject.getLongOrNull("parent_id") ?: Category.NO_PARENT_ID,
-                photo = jsonObject.optString("photo"),
-                responses = jsonObject.getAsMutableList("responses"),
-                config = Category.Config(jsonObject.optJSONObject("config")?.optInt("order") ?: 0)
-            )
-        }
-
-        val currentCategories = mutableListOf<Category>()
-        for (i in 0 until categoryListJson.length()) {
-            (categoryListJson[i] as? JSONObject?)?.let { categoryJson ->
-//                Logger.debug(TAG, "categoryJson: $categoryJson")
-                val parsed = parse(categoryJson)
-                currentCategories.add(parsed)
-            }
-        }
-
-        listenerInfo.basicListener?.onCategories(currentCategories.sortedBy { it.config?.order })
-    }
-
-    private val onLocationUpdate = Emitter.Listener { args ->
-        Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
-
-        val version = 2
-
-        if (version == 1) {
             if (args.size != 1) return@Listener
 
             val data = args[0] as? JSONObject? ?: return@Listener
 
-            Logger.debug(TAG, "[${SocketEvent.Incoming.LOCATION_UPDATE}] data: $data")
+            val status = data.getInt("status")
 
-            val coordsJsonArray = data.optJSONArray("coords") ?: return@Listener
+            val card102Status = Card102Status(status)
 
-            if (coordsJsonArray.length() == 2) {
-                val longitude = coordsJsonArray.getDouble(0)
-                val latitude = coordsJsonArray.getDouble(1)
-                listenerInfo.policeForceListener?.onLocationUpdate(
-                    Location(longitude = longitude, latitude = latitude)
+            if (card102Status != null) {
+                listenerInfo.armListener?.onCard102Update(card102Status)
+            } else {
+                Logger.debug(TAG, "Incorrect/unsupported Card102 status: $status")
+            }
+        }
+    }
+
+    private val onFormInitListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_INIT}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[${SocketEvent.Incoming.FORM_INIT}] data: $data")
+
+            val formJson = data.getJSONObject("form")
+            val formFieldsJsonArray = data.getJSONArray("form_fields")
+
+            val fields = mutableListOf<Form.Field>()
+            for (i in 0 until formFieldsJsonArray.length()) {
+                val formFieldJson = formFieldsJsonArray[i]
+                if (formFieldJson is JSONObject) {
+                    fields.add(
+                        Form.Field(
+                            id = formFieldJson.getLong("id"),
+                            title = formFieldJson.getStringOrNull("title") ?: continue,
+                            prompt = formFieldJson.getStringOrNull("prompt"),
+                            type = findEnumBy { it.key == formFieldJson.getString("type") } ?: continue,
+                            defaultValue = formFieldJson.getStringOrNull("default"),
+                            configs = null,
+                            level = formFieldJson.optInt("level", -1),
+                        )
+                    )
+                }
+            }
+
+            val form = Form(
+                id = formJson.getLong("id"),
+                title = formJson.getStringOrNull("title") ?: "",
+                isFlexible = formJson.optInt("is_flex", -1) == 1,
+                fields = fields,
+                configs = Form.Configs()
+            )
+
+            Logger.debug(TAG, "listenerInfo.formListener: ${listenerInfo.formListener}")
+
+            listenerInfo.formListener?.onFormInit(form)
+        }
+    }
+
+    private val onFormFinalListener by lazy {
+        Emitter.Listener { args ->
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_FINAL}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[FORM_FINAL] data: $data")
+
+            val taskJson = data.optJSONObject("task")
+            val trackId = taskJson?.getStringOrNull("track_id")
+            val taskId = taskJson?.getLongOrNull("task_id")
+            val message = data.getStringOrNull("message")
+            val success = data.optBoolean("success", false)
+
+            listenerInfo.formListener?.onFormFinal(
+                trackId = trackId,
+                taskId = taskId,
+                message = message,
+                success = success
+            )
+        }
+    }
+
+    private val onOperatorGreetListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_GREET}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
+
+//        val name = data.optString("name")
+            val fullName = data.optString("full_name")
+
+            // Url path
+            val photo = data.optString("photo")
+
+            val text = data.optString("text")
+
+            Logger.debug(TAG, "listenerInfo.dialogListener: ${listenerInfo.dialogListener}")
+
+            listenerInfo.dialogListener?.onCallAgentGreet(fullName, photo, text)
+        }
+    }
+
+    private val onOperatorTypingListener by lazy {
+        Emitter.Listener {
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.OPERATOR_TYPING}]")
+        }
+    }
+
+    private val onFeedbackListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.FEEDBACK}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[${SocketEvent.Incoming.FEEDBACK}] data: $data")
+
+            val buttonsJson = data.optJSONArray("buttons")
+
+            val text = data.optString("text")
+//            val chatId = feedback.optLong("chat_id")
+
+            if (buttonsJson != null) {
+                val ratingButtons = mutableListOf<RatingButton>()
+                for (i in 0 until buttonsJson.length()) {
+                    val button = buttonsJson[i]
+                    if (button is JSONObject) {
+                        val payload = button.optString("payload")
+                        val (rating, chatId) = payload.split(":")
+                        ratingButtons.add(
+                            RatingButton(
+                                text = button.optString("title"),
+                                chatId = chatId.toLong(),
+                                rating = rating.toInt()
+                            )
+                        )
+                    }
+                }
+
+                listenerInfo.dialogListener?.onDialogFeedback(text, ratingButtons)
+            } else {
+                listenerInfo.dialogListener?.onDialogFeedback(text, null)
+            }
+        }
+    }
+
+    private val onUserQueueListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [USER_QUEUE]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+//        Logger.debug(TAG, "[USER_QUEUE] data: $data")
+
+            val count = data.getInt("count")
+//            val channel = userQueue.getInt("channel")
+
+            listenerInfo.dialogListener?.onPendingUsersQueueCount(count = count)
+        }
+    }
+
+    private val onMessageListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.MESSAGE}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[${SocketEvent.Incoming.MESSAGE}] data: $data")
+
+            val id = data.getStringOrNull("id")?.trim()
+            val text = data.getStringOrNull("text")?.trim()
+            val noOnline = data.optBoolean("no_online")
+            val noResults = data.optBoolean("no_results")
+            val action = findEnumBy<CallAction> { it.value == data.getStringOrNull("action") }
+            val time = data.optLong("time")
+            val sender = data.getStringOrNull("sender")
+            val from = data.getStringOrNull("from")
+            val mediaJsonObject = data.optJSONObject("media")
+            val rtcJsonObject = data.optJSONObject("rtc")
+            val fuzzyTask = data.optBoolean("fuzzy_task")
+            val attachmentsJsonArray = data.optJSONArray("attachments")
+            val replyMarkupJsonObject = data.optJSONObject("reply_markup")
+            val formJsonObject = data.optJSONObject("form")
+
+            var keyboard: Keyboard? = null
+            if (replyMarkupJsonObject != null) {
+                val rows = mutableListOf<List<Button>>()
+
+                val inlineKeyboard = replyMarkupJsonObject.optJSONArray("inline_keyboard")
+                if (inlineKeyboard != null) {
+                    for (i in 0 until inlineKeyboard.length()) {
+                        val row = inlineKeyboard[i]
+                        if (row is JSONArray) {
+                            val buttons = mutableListOf<Button>()
+                            for (j in 0 until row.length()) {
+                                val button = row.get(j)
+                                if (button is JSONObject) {
+                                    val buttonText = button.getString("text")
+                                    val callbackData = button.getStringOrNull("callback_data")
+                                    val url = button.getStringOrNull("url")
+                                    if (!callbackData.isNullOrBlank()) {
+                                        buttons.add(
+                                            CallbackButton(
+                                                text = buttonText,
+                                                payload = callbackData
+                                            )
+                                        )
+                                    } else if (!url.isNullOrBlank()) {
+                                        buttons.add(UrlButton(text = buttonText, url = url))
+                                    } else {
+                                        buttons.add(Button(text = buttonText))
+                                    }
+                                }
+                            }
+                            rows.add(buttons)
+                        }
+                    }
+                }
+
+                keyboard = Keyboard(inline = true, buttons = rows)
+            }
+
+            if (noResults && from.isNullOrBlank() && sender.isNullOrBlank() && action == null && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.chatBotListener?.onNoResultsFound(text, time)
+                if (isHandled == true) return@Listener
+            }
+
+            if (fuzzyTask && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.chatBotListener?.onFuzzyTaskOffered(text, time)
+                if (isHandled == true) return@Listener
+            }
+
+            if (noOnline && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.dialogListener?.onNoOnlineOperators(text)
+                if (isHandled == true) return@Listener
+            }
+
+            if (action == CallAction.CHAT_TIMEOUT && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.dialogListener?.onLiveChatTimeout(text, time)
+                if (isHandled == true) return@Listener
+            }
+
+            if (action == CallAction.OPERATOR_DISCONNECT && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.dialogListener?.onCallAgentDisconnected(text, time)
+                if (isHandled == true) return@Listener
+            }
+
+            if (action == CallAction.REDIRECT && !text.isNullOrBlank()) {
+                val isHandled = listenerInfo.dialogListener?.onUserRedirected(text, time)
+                if (isHandled == true) return@Listener
+            }
+
+            if (rtcJsonObject != null) {
+                when (findEnumBy<QRTCAction> { it.value == rtcJsonObject.getStringOrNull("type") }) {
+                    QRTCAction.START -> {
+                        when (action) {
+                            CallAction.CALL_ACCEPT ->
+                                listenerInfo.webRTCListener?.onCallAccept()
+                            CallAction.CALL_REDIRECT ->
+                                listenerInfo.webRTCListener?.onCallRedirect()
+                            CallAction.CALL_REDIAL ->
+                                listenerInfo.webRTCListener?.onCallRedial()
+                            else -> {
+                            }
+                        }
+                    }
+                    QRTCAction.PREPARE ->
+                        listenerInfo.webRTCListener?.onCallPrepare()
+                    QRTCAction.READY ->
+                        listenerInfo.webRTCListener?.onCallReady()
+                    QRTCAction.OFFER -> {
+                        val sdp = rtcJsonObject.getString("sdp")
+
+                        listenerInfo.webRTCListener?.onCallOffer(
+                            SessionDescription(
+                                type = SessionDescription.Type.OFFER,
+                                description = sdp
+                            )
+                        )
+                    }
+                    QRTCAction.ANSWER -> {
+                        val sdp = rtcJsonObject.getString("sdp")
+
+                        listenerInfo.webRTCListener?.onCallAnswer(
+                            SessionDescription(
+                                type = SessionDescription.Type.ANSWER,
+                                description = sdp
+                            )
+                        )
+                    }
+                    QRTCAction.CANDIDATE ->
+                        listenerInfo.webRTCListener?.onRemoteIceCandidate(
+                            IceCandidate(
+                                sdpMid = rtcJsonObject.getString("id"),
+                                sdpMLineIndex = rtcJsonObject.getInt("label"),
+                                sdp = rtcJsonObject.getString("candidate")
+                            )
+                        )
+                    QRTCAction.HANGUP ->
+                        listenerInfo.webRTCListener?.onPeerHangupCall()
+                    else -> {
+                        Logger.error(TAG, "Unsupported type for: $rtcJsonObject")
+                    }
+                }
+                return@Listener
+            }
+
+            if (!data.isNull("queued")) {
+                val queued = data.optInt("queued")
+                listenerInfo.dialogListener?.onPendingUsersQueueCount(text, queued)
+            }
+
+            val attachments = mutableListOf<Media>()
+            if (attachmentsJsonArray != null) {
+                for (i in 0 until attachmentsJsonArray.length()) {
+                    val attachment = attachmentsJsonArray[i]
+                    if (attachment is JSONObject) {
+                        attachments.add(
+                            Media(
+                                id = -1,
+                                title = attachment.getStringOrNull("title"),
+                                extension = findEnumBy { it.value == attachment.getStringOrNull("ext") },
+                                type = findEnumBy { it.key == attachment.getStringOrNull("type") },
+                                urlPath = attachment.getStringOrNull("url")
+                            )
+                        )
+                    } else {
+                        Logger.debug(TAG, "Unsupported type of message attachment")
+                    }
+                }
+            }
+
+            var media: Media? = null
+            if (mediaJsonObject != null) {
+                val image = mediaJsonObject.getStringOrNull("image")
+                val audio = mediaJsonObject.getStringOrNull("audio")
+                val video = mediaJsonObject.getStringOrNull("video")
+                val document = mediaJsonObject.getStringOrNull("document")
+                val file = mediaJsonObject.getStringOrNull("file")
+
+                val name = mediaJsonObject.getStringOrNull("name")
+                val ext = mediaJsonObject.getStringOrNull("ext")
+
+                val pair = if (!ext.isNullOrBlank()) {
+                    if (!image.isNullOrBlank()) {
+                        Media.Type.IMAGE to image
+                    } else if (!audio.isNullOrBlank()) {
+                        Media.Type.AUDIO to audio
+                    } else if (!video.isNullOrBlank()) {
+                        Media.Type.VIDEO to video
+                    } else if (!document.isNullOrBlank()) {
+                        Media.Type.DOCUMENT to document
+                    } else if (!file.isNullOrBlank()) {
+                        Media.Type.FILE to file
+                    } else {
+                        null
+                    }
+                } else {
+                    null
+                }
+
+                media = Media(
+                    id = -1,
+                    title = name,
+                    extension = findEnumBy { it.value == ext },
+                    urlPath = pair?.second,
+                    type = pair?.first
                 )
             }
-        } else if (version == 2) {
+
+            val message = Message(
+                id = id,
+                type = Message.Type.INCOMING,
+                text = text,
+                keyboard = keyboard,
+                media = media,
+                attachments = attachments,
+                timestamp = time
+            )
+
+            if (formJsonObject != null && formJsonObject.has("id")) {
+                val form = Form(
+                    id = formJsonObject.optLong("id"),
+                    title = formJsonObject.getStringOrNull("title") ?: "",
+                    prompt = formJsonObject.getStringOrNull("prompt"),
+                    fields = emptyList()
+                )
+                if (listenerInfo.formListener?.onFormFound(message, form) == true) {
+                    return@Listener
+                }
+            }
+
+            listenerInfo.chatBotListener?.onMessage(message = message)
+        }
+    }
+
+    private val onCategoryListListener by lazy {
+        Emitter.Listener { args ->
+//        Logger.debug(TAG, "event [${SocketEvent.Incoming.CATEGORY_LIST}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            val categoryListJson = data.optJSONArray("category_list") ?: return@Listener
+
+//        Logger.debug(TAG, "categoryList: $data")
+
+            fun parse(jsonObject: JSONObject): Category {
+                return Category(
+                    id = jsonObject.optLong("id"),
+                    title = jsonObject.optString("title").trim(),
+                    language = findEnumBy { it.value == jsonObject.optLong("lang") }
+                        ?: Language.ID.RU,
+                    parentId = jsonObject.getLongOrNull("parent_id") ?: Category.NO_PARENT_ID,
+                    photo = jsonObject.optString("photo"),
+                    responses = jsonObject.getAsMutableList("responses"),
+                    config = Category.Config(
+                        jsonObject.optJSONObject("config")?.optInt("order") ?: 0
+                    )
+                )
+            }
+
+            val currentCategories = mutableListOf<Category>()
+            for (i in 0 until categoryListJson.length()) {
+                (categoryListJson[i] as? JSONObject?)?.let { categoryJson ->
+//                Logger.debug(TAG, "categoryJson: $categoryJson")
+                    val parsed = parse(categoryJson)
+                    currentCategories.add(parsed)
+                }
+            }
+
+            listenerInfo.chatBotListener?.onCategories(currentCategories.sortedBy { it.config?.order })
+        }
+    }
+
+    private val onLocationUpdate by lazy {
+        Emitter.Listener { args ->
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
+
             // [{"Gps_Code":7170891,"X":71.4771061686837,"Y":51.1861201686837},{"Gps_Code":7171196,"X":71.43119816868371,"Y":51.1138291686837},{"Gps_Code":7170982,"X":71.5110101686837,"Y":51.1387631686837}]
 
-            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args.contentToString(): ${args.contentToString()}")
+            Logger.debug(
+                TAG,
+                "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args.contentToString(): ${args.contentToString()}"
+            )
 
             val data = args[0] as? JSONArray? ?: return@Listener
 
@@ -918,16 +990,16 @@ class SocketClient private constructor() : SocketRepository {
                 }
             }
 
-            listenerInfo.policeForceListener?.onLocationUpdate(locationUpdates)
+            listenerInfo.armListener?.onLocationUpdate(locationUpdates)
         }
     }
 
-    private val onDisconnectListener = Emitter.Listener {
-        Logger.debug(TAG, "event [${Socket.EVENT_DISCONNECT}]")
+    private val onDisconnectListener by lazy {
+        Emitter.Listener {
+            Logger.debug(TAG, "event [${Socket.EVENT_DISCONNECT}]")
 
-        lastActiveTime = System.currentTimeMillis()
-
-        listenerInfo.socketStateListener?.onDisconnect()
+            listenerInfo.socketStateListener?.onSocketDisconnect()
+        }
     }
 
 }

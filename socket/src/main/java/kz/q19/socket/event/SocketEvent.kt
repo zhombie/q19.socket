@@ -40,6 +40,7 @@ internal sealed class SocketEvent {
         const val INITIALIZE = "initialize"
 
         const val LOCATION_SUBSCRIBE = "location_subscribe"
+        const val LOCATION_UNSUBSCRIBE = "location_unsubscribe"
 
         const val MESSAGE = "message"
 

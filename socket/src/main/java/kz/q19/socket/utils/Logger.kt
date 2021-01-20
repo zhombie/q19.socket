@@ -10,6 +10,12 @@ internal object Logger {
         }
     }
 
+    fun error(tag: String, message: String) {
+        if (SocketClientConfig.isLoggingEnabled()) {
+            Log.e(tag, message)
+        }
+    }
+
     fun error(tag: String, e: Exception) {
         if (SocketClientConfig.isLoggingEnabled()) {
             Log.d(tag, e.toString())

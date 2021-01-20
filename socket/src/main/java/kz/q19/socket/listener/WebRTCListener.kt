@@ -6,6 +6,7 @@ import kz.q19.domain.model.webrtc.SessionDescription
 interface WebRTCListener {
     fun onCallAccept()
     fun onCallRedirect()
+    fun onCallRedial()
     fun onCallPrepare()
     fun onCallReady()
     fun onCallAnswer(sessionDescription: SessionDescription)

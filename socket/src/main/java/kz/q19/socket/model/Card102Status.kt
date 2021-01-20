@@ -5,8 +5,8 @@ import androidx.annotation.Keep
 @Keep
 enum class Card102Status constructor(val status: Int) {
     NEW_CARD102(1),
-    ASSIGNED_POLICE_FORCE(2),
-    POLICE_FORCE_ON_SPOT(3),
+    ASSIGNED_FORCE(2),
+    FORCE_ON_SPOT(3),
     COMPLETED_OPERATION(4);
 
     companion object {

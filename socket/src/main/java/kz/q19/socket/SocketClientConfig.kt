@@ -1,6 +1,6 @@
 package kz.q19.socket
 
-import kz.q19.domain.model.Language
+import kz.q19.domain.model.language.Language
 
 object SocketClientConfig {
 

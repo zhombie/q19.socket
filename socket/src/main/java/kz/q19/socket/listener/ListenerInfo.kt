@@ -2,18 +2,18 @@ package kz.q19.socket.listener
 
 internal class ListenerInfo {
     var socketStateListener: SocketStateListener? = null
-    var basicListener: BasicListener? = null
+    var chatBotListener: ChatBotListener? = null
     var dialogListener: DialogListener? = null
     var formListener: FormListener? = null
     var webRTCListener: WebRTCListener? = null
-    var policeForceListener: PoliceForceListener? = null
+    var armListener: ARMListener? = null
 
     fun clear() {
         socketStateListener = null
-        basicListener = null
+        chatBotListener = null
         dialogListener = null
         formListener = null
         webRTCListener = null
-        policeForceListener = null
+        armListener = null
     }
 }
