@@ -109,101 +109,116 @@ class SocketClient private constructor() : SocketRepository {
         socket?.connect()
     }
 
-    override fun registerAllEventListeners() {
+    override fun registerAllEventListeners(): Boolean {
         Logger.debug(TAG, "registerAllEventListeners()")
 
-        registerSocketConnectEventListener()
-        registerMessageEventListener()
-        registerUsersQueueEventListener()
-        registerCallAgentGreetEventListener()
-        registerCallAgentTypingEventListener()
-        registerCard102UpdateEventListener()
-        registerUserDialogFeedbackEventListener()
-        registerFormInitializeEventListener()
-        registerFormFinalizeEventListener()
-        registerSocketDisconnectEventListener()
+        return registerSocketConnectEventListener() &&
+                registerMessageEventListener() &&
+                registerUsersQueueEventListener() &&
+                registerCallAgentGreetEventListener() &&
+                registerCallAgentTypingEventListener() &&
+                registerCard102UpdateEventListener() &&
+                registerUserDialogFeedbackEventListener() &&
+                registerFormInitializeEventListener() &&
+                registerFormFinalizeEventListener() &&
+                registerSocketDisconnectEventListener()
     }
 
-    override fun unregisterAllEventListeners() {
+    override fun unregisterAllEventListeners(): Boolean {
         Logger.debug(TAG, "unregisterAllEventListeners()")
 
-        socket?.off()
+        return if (socket == null || socket?.connected() == false) {
+            false
+        } else {
+            socket?.off()
+            true
+        }
     }
 
-    override fun registerSocketConnectEventListener() =
+    override fun registerSocketConnectEventListener(): Boolean =
         registerEventListener(Socket.EVENT_CONNECT, onConnectListener)
 
-    override fun unregisterSocketConnectEventListener() =
+    override fun unregisterSocketConnectEventListener(): Boolean =
         unregisterEventListener(Socket.EVENT_CONNECT, onConnectListener)
 
-    override fun registerMessageEventListener() =
+    override fun registerMessageEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.MESSAGE, onMessageListener)
 
-    override fun unregisterMessageEventListener() =
+    override fun unregisterMessageEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.MESSAGE, onMessageListener)
 
-    override fun registerChatBotDashboardEventListener() =
+    override fun registerChatBotDashboardEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
 
-    override fun unregisterChatBotDashboardEventListener() =
+    override fun unregisterChatBotDashboardEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.CATEGORY_LIST, onCategoryListListener)
 
-    override fun registerUsersQueueEventListener() =
+    override fun registerUsersQueueEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
 
-    override fun unregisterUsersQueueEventListener() =
+    override fun unregisterUsersQueueEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.USER_QUEUE, onUserQueueListener)
 
-    override fun registerCallAgentGreetEventListener() =
+    override fun registerCallAgentGreetEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
 
-    override fun unregisterCallAgentGreetEventListener() =
+    override fun unregisterCallAgentGreetEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.OPERATOR_GREET, onOperatorGreetListener)
 
-    override fun registerCallAgentTypingEventListener() =
+    override fun registerCallAgentTypingEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
 
-    override fun unregisterCallAgentTypingEventListener() =
+    override fun unregisterCallAgentTypingEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.OPERATOR_TYPING, onOperatorTypingListener)
 
-    override fun registerCard102UpdateEventListener() =
+    override fun registerCard102UpdateEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
 
-    override fun unregisterCard102UpdateEventListener() =
+    override fun unregisterCard102UpdateEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
 
-    override fun registerUserDialogFeedbackEventListener() =
+    override fun registerUserDialogFeedbackEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
 
-    override fun unregisterUserDialogFeedbackEventListener() =
+    override fun unregisterUserDialogFeedbackEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
 
-    override fun registerFormInitializeEventListener() =
+    override fun registerFormInitializeEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
 
-    override fun unregisterFormInitializeEventListener() =
+    override fun unregisterFormInitializeEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FORM_INIT, onFormInitListener)
 
-    override fun registerFormFinalizeEventListener() =
+    override fun registerFormFinalizeEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
 
-    override fun unregisterFormFinalizeEventListener() =
+    override fun unregisterFormFinalizeEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
 
-    override fun registerSocketDisconnectEventListener() =
+    override fun registerSocketDisconnectEventListener(): Boolean =
         registerEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
-    override fun unregisterSocketDisconnectEventListener() =
+    override fun unregisterSocketDisconnectEventListener(): Boolean =
         unregisterEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
 
-    private fun registerEventListener(event: String, listener: Emitter.Listener) {
+    private fun registerEventListener(event: String, listener: Emitter.Listener): Boolean {
         Logger.debug(TAG, "registerEventListener() -> $event, $listener")
-        socket?.on(event, listener)
+        return if (socket?.hasListeners(event) == true) {
+            false
+        } else {
+            socket?.on(event, listener)
+            true
+        }
     }
 
-    private fun unregisterEventListener(event: String, listener: Emitter.Listener) {
+    private fun unregisterEventListener(event: String, listener: Emitter.Listener): Boolean {
         Logger.debug(TAG, "unregisterEventListener() -> $event, $listener")
-        socket?.off(event, listener)
+        return if (socket?.hasListeners(event) == true) {
+            socket?.off(event, listener)
+            true
+        } else {
+            false
+        }
     }
 
     override fun release() {
@@ -216,9 +231,7 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun getId(): String? = socket?.id()
 
-    override fun isConnected(): Boolean {
-        return socket?.connected() ?: false
-    }
+    override fun isConnected(): Boolean = socket?.connected() ?: false
 
     override fun sendCallInitialization(
         callType: CallType,
@@ -228,7 +241,7 @@ class SocketClient private constructor() : SocketRepository {
         location: Location?,
         language: Language
     ) {
-        Logger.debug(TAG, "initializeCall() -> $callType, $userId, $domain, $topic, $location, $language")
+        Logger.debug(TAG, "sendCallInitialization() -> $callType, $userId, $domain, $topic, $location, $language")
 
         when (callType) {
             CallType.TEXT -> {
@@ -638,29 +651,29 @@ class SocketClient private constructor() : SocketRepository {
 
             Logger.debug(TAG, "[${SocketEvent.Incoming.FEEDBACK}] data: $data")
 
-            val buttonsJson = data.optJSONArray("buttons")
+            val buttonsJSONArray = data.optJSONArray("buttons")
 
             val text = data.optString("text")
-//            val chatId = feedback.optLong("chat_id")
+            val chatId = data.optLong("chat_id", -1)
 
-            if (buttonsJson != null) {
-                val ratingButtons = mutableListOf<RateButton>()
-                for (i in 0 until buttonsJson.length()) {
-                    val button = buttonsJson[i]
+            if (buttonsJSONArray != null) {
+                val rateButtons = mutableListOf<RateButton>()
+                for (i in 0 until buttonsJSONArray.length()) {
+                    val button = buttonsJSONArray[i]
                     if (button is JSONObject) {
                         val payload = button.optString("payload")
-                        val (rating, chatId) = payload.split(":")
-                        ratingButtons.add(
+                        val (_, rating, _) = payload.split(":")
+                        rateButtons.add(
                             RateButton(
                                 text = button.optString("title"),
-                                chatId = chatId.toLong(),
+                                chatId = chatId,
                                 rating = rating.toInt()
                             )
                         )
                     }
                 }
 
-                listenerInfo.dialogListener?.onDialogFeedback(text, ratingButtons)
+                listenerInfo.dialogListener?.onDialogFeedback(text, rateButtons)
             } else {
                 listenerInfo.dialogListener?.onDialogFeedback(text, null)
             }
@@ -675,7 +688,7 @@ class SocketClient private constructor() : SocketRepository {
 
             val data = args[0] as? JSONObject? ?: return@Listener
 
-//        Logger.debug(TAG, "[USER_QUEUE] data: $data")
+//            Logger.debug(TAG, "[USER_QUEUE] data: $data")
 
             val count = data.getInt("count")
 //            val channel = userQueue.getInt("channel")

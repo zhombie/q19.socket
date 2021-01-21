@@ -1,39 +1,39 @@
 package kz.q19.socket.repository
 
 interface SocketEventRegistrationRepository {
-    fun registerAllEventListeners()
-    fun unregisterAllEventListeners()
+    fun registerAllEventListeners(): Boolean
+    fun unregisterAllEventListeners(): Boolean
 
-    fun registerSocketConnectEventListener()
-    fun unregisterSocketConnectEventListener()
+    fun registerSocketConnectEventListener(): Boolean
+    fun unregisterSocketConnectEventListener(): Boolean
 
-    fun registerMessageEventListener()
-    fun unregisterMessageEventListener()
+    fun registerMessageEventListener(): Boolean
+    fun unregisterMessageEventListener(): Boolean
 
-    fun registerChatBotDashboardEventListener()
-    fun unregisterChatBotDashboardEventListener()
+    fun registerChatBotDashboardEventListener(): Boolean
+    fun unregisterChatBotDashboardEventListener(): Boolean
 
-    fun registerUsersQueueEventListener()
-    fun unregisterUsersQueueEventListener()
+    fun registerUsersQueueEventListener(): Boolean
+    fun unregisterUsersQueueEventListener(): Boolean
 
-    fun registerCallAgentGreetEventListener()
-    fun unregisterCallAgentGreetEventListener()
+    fun registerCallAgentGreetEventListener(): Boolean
+    fun unregisterCallAgentGreetEventListener(): Boolean
 
-    fun registerCallAgentTypingEventListener()
-    fun unregisterCallAgentTypingEventListener()
+    fun registerCallAgentTypingEventListener(): Boolean
+    fun unregisterCallAgentTypingEventListener(): Boolean
 
-    fun registerCard102UpdateEventListener()
-    fun unregisterCard102UpdateEventListener()
+    fun registerCard102UpdateEventListener(): Boolean
+    fun unregisterCard102UpdateEventListener(): Boolean
 
-    fun registerUserDialogFeedbackEventListener()
-    fun unregisterUserDialogFeedbackEventListener()
+    fun registerUserDialogFeedbackEventListener(): Boolean
+    fun unregisterUserDialogFeedbackEventListener(): Boolean
 
-    fun registerFormInitializeEventListener()
-    fun unregisterFormInitializeEventListener()
+    fun registerFormInitializeEventListener(): Boolean
+    fun unregisterFormInitializeEventListener(): Boolean
 
-    fun registerFormFinalizeEventListener()
-    fun unregisterFormFinalizeEventListener()
+    fun registerFormFinalizeEventListener(): Boolean
+    fun unregisterFormFinalizeEventListener(): Boolean
 
-    fun registerSocketDisconnectEventListener()
-    fun unregisterSocketDisconnectEventListener()
+    fun registerSocketDisconnectEventListener(): Boolean
+    fun unregisterSocketDisconnectEventListener(): Boolean
 }
