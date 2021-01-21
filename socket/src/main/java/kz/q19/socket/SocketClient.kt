@@ -9,10 +9,7 @@ import kz.q19.domain.model.call.CallType
 import kz.q19.domain.model.form.Form
 import kz.q19.domain.model.geo.Location
 import kz.q19.domain.model.keyboard.Keyboard
-import kz.q19.domain.model.keyboard.button.Button
-import kz.q19.domain.model.keyboard.button.CallbackButton
-import kz.q19.domain.model.keyboard.button.RatingButton
-import kz.q19.domain.model.keyboard.button.UrlButton
+import kz.q19.domain.model.keyboard.button.*
 import kz.q19.domain.model.language.Language
 import kz.q19.domain.model.media.Media
 import kz.q19.domain.model.message.CallAction
@@ -647,14 +644,14 @@ class SocketClient private constructor() : SocketRepository {
 //            val chatId = feedback.optLong("chat_id")
 
             if (buttonsJson != null) {
-                val ratingButtons = mutableListOf<RatingButton>()
+                val ratingButtons = mutableListOf<RateButton>()
                 for (i in 0 until buttonsJson.length()) {
                     val button = buttonsJson[i]
                     if (button is JSONObject) {
                         val payload = button.optString("payload")
                         val (rating, chatId) = payload.split(":")
                         ratingButtons.add(
-                            RatingButton(
+                            RateButton(
                                 text = button.optString("title"),
                                 chatId = chatId.toLong(),
                                 rating = rating.toInt()
@@ -712,38 +709,31 @@ class SocketClient private constructor() : SocketRepository {
             val replyMarkupJsonObject = data.optJSONObject("reply_markup")
             val formJsonObject = data.optJSONObject("form")
 
+            val inlineKeyboard = replyMarkupJsonObject?.optJSONArray("inline_keyboard")
             var keyboard: Keyboard? = null
-            if (replyMarkupJsonObject != null) {
-                val rows = mutableListOf<List<Button>>()
-
-                val inlineKeyboard = replyMarkupJsonObject.optJSONArray("inline_keyboard")
-                if (inlineKeyboard != null) {
-                    for (i in 0 until inlineKeyboard.length()) {
-                        val row = inlineKeyboard[i]
-                        if (row is JSONArray) {
-                            val buttons = mutableListOf<Button>()
-                            for (j in 0 until row.length()) {
-                                val button = row.get(j)
-                                if (button is JSONObject) {
-                                    val buttonText = button.getString("text")
-                                    val callbackData = button.getStringOrNull("callback_data")
-                                    val url = button.getStringOrNull("url")
-                                    if (!callbackData.isNullOrBlank()) {
-                                        buttons.add(
-                                            CallbackButton(
-                                                text = buttonText,
-                                                payload = callbackData
-                                            )
-                                        )
-                                    } else if (!url.isNullOrBlank()) {
-                                        buttons.add(UrlButton(text = buttonText, url = url))
-                                    } else {
-                                        buttons.add(Button(text = buttonText))
-                                    }
-                                }
+            val rows = mutableListOf<List<Button>>()
+            if (inlineKeyboard != null) {
+                for (i in 0 until inlineKeyboard.length()) {
+                    val row = inlineKeyboard[i]
+                    if (row is JSONArray) {
+                        val buttons = mutableListOf<Button>()
+                        for (j in 0 until row.length()) {
+                            val buttonJsonObject = row.get(j)
+                            if (buttonJsonObject !is JSONObject) {
+                                continue
                             }
-                            rows.add(buttons)
+                            val buttonText = buttonJsonObject.getString("text")
+                            val callbackData = buttonJsonObject.getStringOrNull("callback_data")
+                            val url = buttonJsonObject.getStringOrNull("url")
+                            if (!callbackData.isNullOrBlank()) {
+                                buttons.add(CallbackButton(text = buttonText, payload = callbackData))
+                            } else if (!url.isNullOrBlank()) {
+                                buttons.add(UrlButton(text = buttonText, url = url))
+                            } else {
+                                buttons.add(TextButton(text = buttonText))
+                            }
                         }
+                        rows.add(buttons)
                     }
                 }
 
@@ -761,7 +751,7 @@ class SocketClient private constructor() : SocketRepository {
             }
 
             if (noOnline && !text.isNullOrBlank()) {
-                val isHandled = listenerInfo.dialogListener?.onNoOnlineOperators(text)
+                val isHandled = listenerInfo.dialogListener?.onNoOnlineCallAgents(text)
                 if (isHandled == true) return@Listener
             }
 
@@ -898,15 +888,15 @@ class SocketClient private constructor() : SocketRepository {
                 )
             }
 
-            val message = Message(
-                id = id,
-                type = Message.Type.INCOMING,
-                text = text,
-                keyboard = keyboard,
-                media = media,
-                attachments = attachments,
-                timestamp = time
-            )
+            val message = Message.Builder()
+                .setId(id)
+                .setType(Message.Type.INCOMING)
+                .setText(text)
+                .setKeyboard(keyboard)
+                .setMedia(media)
+                .setAttachments(attachments)
+                .setCreatedAt(time)
+                .build()
 
             if (formJsonObject != null && formJsonObject.has("id")) {
                 val form = Form(
