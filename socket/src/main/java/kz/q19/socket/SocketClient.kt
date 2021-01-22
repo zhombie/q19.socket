@@ -402,6 +402,7 @@ class SocketClient private constructor() : SocketRepository {
 
         emit(SocketEvent.Outgoing.MESSAGE, json {
             put("rtc", json {
+                put("type", "candidate")
                 put("id", iceCandidate.sdpMid)
                 put("label", iceCandidate.sdpMLineIndex)
                 put("candidate", iceCandidate.sdp)
