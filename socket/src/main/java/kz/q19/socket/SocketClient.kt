@@ -19,6 +19,7 @@ import kz.q19.domain.model.message.QRTCAction
 import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
+import kz.q19.socket.model.CallInitialization
 import kz.q19.socket.model.Card102Status
 import kz.q19.socket.model.LocationUpdate
 import kz.q19.socket.model.Sender
@@ -177,6 +178,12 @@ class SocketClient private constructor() : SocketRepository {
     override fun unregisterCard102UpdateEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.CARD102_UPDATE, onCard102UpdateListener)
 
+    override fun registerLocationUpdateEventListener(): Boolean =
+        registerEventListener(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
+
+    override fun unregisterLocationUpdateEventListener(): Boolean =
+        unregisterEventListener(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
+
     override fun registerUserDialogFeedbackEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
 
@@ -233,68 +240,56 @@ class SocketClient private constructor() : SocketRepository {
 
     override fun isConnected(): Boolean = socket?.connected() ?: false
 
-    override fun sendCallInitialization(
-        callType: CallType,
-        userId: Long?,
-        domain: String?,
-        topic: String?,
-        location: Location?,
-        language: Language
-    ) {
-        Logger.debug(TAG, "sendCallInitialization() -> $callType, $userId, $domain, $topic, $location, $language")
+    override fun sendCallInitialization(callInitialization: CallInitialization) {
+        Logger.debug(TAG, "sendCallInitialization() -> $callInitialization")
 
-        when (callType) {
-            CallType.TEXT -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    putIfValueNotNull("user_id", userId)
-                    putIfValueNotNull("domain", domain)
-                    putIfValueNotNull("topic", topic)
-
-                    if (location != null) {
-                        put("location", json {
-                            put("lat", location.latitude)
-                            put("lon", location.longitude)
-                        })
-                    }
-
-                    put("lang", language.key)
-                }) {}
-            }
-            CallType.AUDIO -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    putIfValueNotNull("user_id", userId)
+        emit(SocketEvent.Outgoing.INITIALIZE, json {
+            when (callInitialization.callType) {
+                CallType.TEXT -> {
+                    // Ignored
+                }
+                CallType.AUDIO -> {
                     put("media", "audio")
-                    putIfValueNotNull("domain", domain)
-                    putIfValueNotNull("topic", topic)
-
-                    if (location != null) {
-                        put("location", json {
-                            put("lat", location.latitude)
-                            put("lon", location.longitude)
-                        })
-                    }
-
-                    put("lang", language.key)
-                }) {}
-            }
-            CallType.VIDEO -> {
-                emit(SocketEvent.Outgoing.INITIALIZE, json {
-                    putIfValueNotNull("user_id", userId)
+                }
+                CallType.VIDEO -> {
                     put("media", "video")
-                    putIfValueNotNull("domain", domain)
-                    putIfValueNotNull("topic", topic)
+                }
+                else -> {
+                    return@json
+                }
+            }
 
-                    if (location != null) {
-                        put("location", json {
-                            put("lat", location.latitude)
-                            put("lon", location.longitude)
+            putIfValueNotNull("user_id", callInitialization.userId)
+            putIfValueNotNull("domain", callInitialization.domain)
+            putIfValueNotNull("topic", callInitialization.topic)
+
+            if (callInitialization.device != null) {
+                put("device", json {
+                    putIfValueNotNull("os", callInitialization.device.os)
+                    putIfValueNotNull("os_ver", callInitialization.device.osVersion)
+                    putIfValueNotNull("name", callInitialization.device.name)
+                    putIfValueNotNull("mobile_operator", callInitialization.device.mobileOperator)
+                    putIfValueNotNull("app_ver", callInitialization.device.appVersion)
+
+                    if (callInitialization.device.battery != null) {
+                        put("battery", json {
+                            putIfValueNotNull("percentage", callInitialization.device.battery.percentage)
+                            putIfValueNotNull("is_charging", callInitialization.device.battery.isCharging)
+                            putIfValueNotNull("temperature", callInitialization.device.battery.temperature)
                         })
                     }
-
-                    put("lang", language.key)
-                }) {}
+                })
             }
-        }
+
+            if (callInitialization.location != null) {
+                put("location", json {
+                    put("lat", callInitialization.location.latitude)
+                    put("lon", callInitialization.location.longitude)
+                })
+            }
+
+            put("lang", callInitialization.language.key)
+        }) {}
     }
 
     override fun requestParentCategories() {
@@ -352,8 +347,6 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendLocationUpdateSubscription() {
         Logger.debug(TAG, "sendLocationUpdateSubscription()")
 
-        socket?.on(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
-
         emit(SocketEvent.Outgoing.LOCATION_SUBSCRIBE) {}
     }
 
@@ -361,8 +354,6 @@ class SocketClient private constructor() : SocketRepository {
         Logger.debug(TAG, "sendLocationUpdateUnsubscription()")
 
         emit(SocketEvent.Outgoing.LOCATION_UNSUBSCRIBE) {}
-
-        socket?.off(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
     }
 
     override fun sendCallAction(action: CallAction) {
@@ -519,26 +510,6 @@ class SocketClient private constructor() : SocketRepository {
             Logger.debug(TAG, "event [${Socket.EVENT_CONNECT}]")
 
             listenerInfo.socketStateListener?.onSocketConnect()
-        }
-    }
-
-    private val onCard102UpdateListener by lazy {
-        Emitter.Listener { args ->
-            Logger.debug(TAG, "event [${SocketEvent.Incoming.CARD102_UPDATE}]: $args")
-
-            if (args.size != 1) return@Listener
-
-            val data = args[0] as? JSONObject? ?: return@Listener
-
-            val status = data.getInt("status")
-
-            val card102Status = Card102Status(status)
-
-            if (card102Status != null) {
-                listenerInfo.armListener?.onCard102Update(card102Status)
-            } else {
-                Logger.debug(TAG, "Incorrect/unsupported Card102 status: $status")
-            }
         }
     }
 
@@ -968,16 +939,33 @@ class SocketClient private constructor() : SocketRepository {
         }
     }
 
+    private val onCard102UpdateListener by lazy {
+        Emitter.Listener { args ->
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.CARD102_UPDATE}]: $args")
+
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            val status = data.getInt("status")
+
+            val card102Status = Card102Status(status)
+
+            if (card102Status != null) {
+                listenerInfo.armListener?.onCard102Update(card102Status)
+            } else {
+                Logger.debug(TAG, "Incorrect/unsupported Card102 status: $status")
+            }
+        }
+    }
+
     private val onLocationUpdate by lazy {
         Emitter.Listener { args ->
-            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
+//            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}]")
 
             // [{"Gps_Code":7170891,"X":71.4771061686837,"Y":51.1861201686837},{"Gps_Code":7171196,"X":71.43119816868371,"Y":51.1138291686837},{"Gps_Code":7170982,"X":71.5110101686837,"Y":51.1387631686837}]
 
-            Logger.debug(
-                TAG,
-                "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args.contentToString(): ${args.contentToString()}"
-            )
+            Logger.debug(TAG, "event [${SocketEvent.Incoming.LOCATION_UPDATE}] args: ${args.contentToString()}")
 
             val data = args[0] as? JSONArray? ?: return@Listener
 

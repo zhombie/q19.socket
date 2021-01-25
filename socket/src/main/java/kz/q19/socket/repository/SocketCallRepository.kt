@@ -1,22 +1,13 @@
 package kz.q19.socket.repository
 
-import kz.q19.domain.model.call.CallType
-import kz.q19.domain.model.geo.Location
-import kz.q19.domain.model.language.Language
 import kz.q19.domain.model.message.CallAction
 import kz.q19.domain.model.message.QRTCAction
 import kz.q19.domain.model.webrtc.IceCandidate
 import kz.q19.domain.model.webrtc.SessionDescription
+import kz.q19.socket.model.CallInitialization
 
 interface SocketCallRepository {
-    fun sendCallInitialization(
-        callType: CallType,
-        userId: Long? = null,
-        domain: String? = null,
-        topic: String? = null,
-        location: Location? = null,
-        language: Language
-    )
+    fun sendCallInitialization(callInitialization: CallInitialization)
 
     fun sendPendingCallCancellation()
 

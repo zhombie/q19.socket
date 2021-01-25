@@ -25,6 +25,9 @@ interface SocketEventRegistrationRepository {
     fun registerCard102UpdateEventListener(): Boolean
     fun unregisterCard102UpdateEventListener(): Boolean
 
+    fun registerLocationUpdateEventListener(): Boolean
+    fun unregisterLocationUpdateEventListener(): Boolean
+
     fun registerUserDialogFeedbackEventListener(): Boolean
     fun unregisterUserDialogFeedbackEventListener(): Boolean
 
