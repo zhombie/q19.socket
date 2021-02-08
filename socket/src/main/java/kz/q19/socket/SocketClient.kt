@@ -97,8 +97,8 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.clear()
     }
 
-    override fun connect(url: String) {
-        Logger.debug(TAG, "connect() -> url: $url")
+    override fun create(url: String) {
+        Logger.debug(TAG, "create() -> url: $url")
 
         val options = IO.Options()
         options.reconnection = true
@@ -106,6 +106,10 @@ class SocketClient private constructor() : SocketRepository {
         options.reconnectionDelayMax = 3000L
 
         socket = IO.socket(url, options)
+    }
+
+    override fun connect() {
+        Logger.debug(TAG, "connect()")
 
         socket?.connect()
     }
