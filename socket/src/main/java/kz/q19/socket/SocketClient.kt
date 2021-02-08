@@ -293,10 +293,14 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun requestParentCategories() {
+        Logger.debug(TAG, "requestParentCategories()")
+
         requestCategories(parentId = Category.NO_PARENT_ID)
     }
 
     override fun requestCategories(parentId: Long) {
+        Logger.debug(TAG, "requestCategories() -> parentId: $parentId")
+
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_category_list")
             put("parent_id", parentId)
@@ -305,6 +309,8 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun requestResponse(id: Long) {
+        Logger.debug(TAG, "requestResponse() -> id: $id")
+
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_response")
             put("id", id)
@@ -332,12 +338,16 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun sendUserMediaMessage(type: Media.Type, url: String) {
+        Logger.debug(TAG, "sendUserMediaMessage() -> type: $type, url: $url")
+
         emit(SocketEvent.Outgoing.USER_MESSAGE, json {
             put(type.key, url)
         }) {}
     }
 
     override fun sendUserDialogFeedback(rating: Int, chatId: Long) {
+        Logger.debug(TAG, "sendUserDialogFeedback() -> rating: $rating, chatId: $chatId")
+
         emit(SocketEvent.Outgoing.USER_FEEDBACK, json {
             put("r", rating)
             put("chat_id", chatId)
@@ -907,35 +917,34 @@ class SocketClient private constructor() : SocketRepository {
 
             val data = args[0] as? JSONObject? ?: return@Listener
 
-            val categoryListJson = data.optJSONArray("category_list") ?: return@Listener
+            Logger.debug(TAG, "[${SocketEvent.Incoming.CATEGORY_LIST}] data: $data")
 
-//        Logger.debug(TAG, "categoryList: $data")
+            val categoryListJSONArray = data.optJSONArray("category_list") ?: return@Listener
 
             fun parse(jsonObject: JSONObject): Category {
                 return Category(
-                    id = jsonObject.optLong("id"),
-                    title = jsonObject.optString("title").trim(),
-                    language = findEnumBy { it.value == jsonObject.optLong("lang") }
-                        ?: Language.ID.RU,
+                    id = jsonObject.getLongOrNull("id") ?: -1,
+                    title = jsonObject.getStringOrNull("title")?.trim(),
+                    language = findEnumBy { it.value == jsonObject.optLong("lang") } ?: Language.ID.RU,
                     parentId = jsonObject.getLongOrNull("parent_id") ?: Category.NO_PARENT_ID,
-                    photo = jsonObject.optString("photo"),
+                    photo = jsonObject.getStringOrNull("photo"),
                     responses = jsonObject.getAsMutableList("responses"),
                     config = Category.Config(
-                        jsonObject.optJSONObject("config")?.optInt("order") ?: 0
+                        jsonObject.getObjectOrNull("config")?.getIntOrNull("order") ?: 0
                     )
                 )
             }
 
-            val currentCategories = mutableListOf<Category>()
-            for (i in 0 until categoryListJson.length()) {
-                (categoryListJson[i] as? JSONObject?)?.let { categoryJson ->
+            val categories = mutableListOf<Category>()
+            for (i in 0 until categoryListJSONArray.length()) {
+                (categoryListJSONArray[i] as? JSONObject?)?.let { categoryJson ->
 //                Logger.debug(TAG, "categoryJson: $categoryJson")
                     val parsed = parse(categoryJson)
-                    currentCategories.add(parsed)
+                    categories.add(parsed)
                 }
             }
 
-            listenerInfo.chatBotListener?.onCategories(currentCategories.sortedBy { it.config?.order })
+            listenerInfo.chatBotListener?.onCategories(categories.sortedBy { it.config?.order })
         }
     }
 
@@ -947,7 +956,7 @@ class SocketClient private constructor() : SocketRepository {
 
             val data = args[0] as? JSONObject? ?: return@Listener
 
-            val status = data.getInt("status")
+            val status = data.getIntOrNull("status") ?: -1
 
             val card102Status = Card102Status(status)
 
