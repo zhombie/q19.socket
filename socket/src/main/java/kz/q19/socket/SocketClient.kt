@@ -933,13 +933,23 @@ class SocketClient private constructor() : SocketRepository {
             val categoryListJSONArray = data.optJSONArray("category_list") ?: return@Listener
 
             fun parse(jsonObject: JSONObject): Category? {
+                val responsesJSONArray = jsonObject.getArrayOrEmpty("responses")
+                val responses = mutableListOf<Long>()
+                for (i in 0 until responsesJSONArray.length()) {
+                    val responseId = responsesJSONArray[i]
+                    if (responseId is Long) {
+                        responses.add(responseId)
+                    } else if (responseId is Int) {
+                        responses.add(responseId.toLong())
+                    }
+                }
                 return Category(
                     id = jsonObject.getLongOrNull("id") ?: return null,
                     title = jsonObject.getStringOrNull("title")?.trim(),
                     language = findEnumBy { it.value == jsonObject.optLong("lang") } ?: Language.ID.RU,
                     parentId = jsonObject.getLongOrNull("parent_id") ?: Category.NO_PARENT_ID,
                     photo = jsonObject.getStringOrNull("photo"),
-                    responses = jsonObject.getAsMutableList("responses"),
+                    responses = responses,
                     config = Category.Config(
                         jsonObject.getObjectOrNull("config")?.getIntOrNull("order") ?: 0
                     )
