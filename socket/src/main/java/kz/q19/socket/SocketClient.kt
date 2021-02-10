@@ -1,5 +1,7 @@
 package kz.q19.socket
 
+import android.Manifest
+import androidx.annotation.RequiresPermission
 import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
@@ -104,6 +106,7 @@ class SocketClient private constructor() : SocketRepository {
         socket = IO.socket(url, options)
     }
 
+    @RequiresPermission(Manifest.permission.INTERNET)
     override fun connect() {
         Logger.debug(TAG, "connect()")
 
