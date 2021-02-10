@@ -13,16 +13,12 @@ import kz.q19.domain.model.keyboard.button.*
 import kz.q19.domain.model.language.Language
 import kz.q19.domain.model.media.Media
 import kz.q19.domain.model.message.CallAction
-import kz.q19.domain.model.message.Category
 import kz.q19.domain.model.message.Message
 import kz.q19.domain.model.message.QRTCAction
 import kz.q19.domain.model.webrtc.*
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
-import kz.q19.socket.model.CallInitialization
-import kz.q19.socket.model.Card102Status
-import kz.q19.socket.model.LocationUpdate
-import kz.q19.socket.model.Sender
+import kz.q19.socket.model.*
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
 import kz.q19.utils.enums.findEnumBy
@@ -140,11 +136,15 @@ class SocketClient private constructor() : SocketRepository {
         }
     }
 
-    override fun registerSocketConnectEventListener(): Boolean =
-        registerEventListener(Socket.EVENT_CONNECT, onConnectListener)
+    override fun registerSocketConnectEventListener(): Boolean {
+        socket?.on(Socket.EVENT_CONNECT, onConnectListener)
+        return true
+    }
 
-    override fun unregisterSocketConnectEventListener(): Boolean =
-        unregisterEventListener(Socket.EVENT_CONNECT, onConnectListener)
+    override fun unregisterSocketConnectEventListener(): Boolean {
+        socket?.off(Socket.EVENT_CONNECT, onConnectListener)
+        return true
+    }
 
     override fun registerMessageEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.MESSAGE, onMessageListener)
@@ -206,11 +206,15 @@ class SocketClient private constructor() : SocketRepository {
     override fun unregisterFormFinalizeEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
 
-    override fun registerSocketDisconnectEventListener(): Boolean =
-        registerEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
+    override fun registerSocketDisconnectEventListener(): Boolean {
+        socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
+        return true
+    }
 
-    override fun unregisterSocketDisconnectEventListener(): Boolean =
-        unregisterEventListener(Socket.EVENT_DISCONNECT, onDisconnectListener)
+    override fun unregisterSocketDisconnectEventListener(): Boolean {
+        socket?.off(Socket.EVENT_DISCONNECT, onDisconnectListener)
+        return true
+    }
 
     private fun registerEventListener(event: String, listener: Emitter.Listener): Boolean {
         Logger.debug(TAG, "registerEventListener() -> $event, $listener")
@@ -296,14 +300,14 @@ class SocketClient private constructor() : SocketRepository {
         }) {}
     }
 
-    override fun requestParentCategories() {
-        Logger.debug(TAG, "requestParentCategories()")
+    override fun getParentCategories() {
+        Logger.debug(TAG, "getParentCategories()")
 
-        requestCategories(parentId = Category.NO_PARENT_ID)
+        getCategories(parentId = Category.NO_PARENT_ID)
     }
 
-    override fun requestCategories(parentId: Long) {
-        Logger.debug(TAG, "requestCategories() -> parentId: $parentId")
+    override fun getCategories(parentId: Long) {
+        Logger.debug(TAG, "getCategories() -> parentId: $parentId")
 
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_category_list")
@@ -312,8 +316,8 @@ class SocketClient private constructor() : SocketRepository {
         }) {}
     }
 
-    override fun requestResponse(id: Long) {
-        Logger.debug(TAG, "requestResponse() -> id: $id")
+    override fun getResponse(id: Long) {
+        Logger.debug(TAG, "getResponse() -> id: $id")
 
         emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
             put("action", "get_response")
@@ -925,9 +929,9 @@ class SocketClient private constructor() : SocketRepository {
 
             val categoryListJSONArray = data.optJSONArray("category_list") ?: return@Listener
 
-            fun parse(jsonObject: JSONObject): Category {
+            fun parse(jsonObject: JSONObject): Category? {
                 return Category(
-                    id = jsonObject.getLongOrNull("id") ?: -1,
+                    id = jsonObject.getLongOrNull("id") ?: return null,
                     title = jsonObject.getStringOrNull("title")?.trim(),
                     language = findEnumBy { it.value == jsonObject.optLong("lang") } ?: Language.ID.RU,
                     parentId = jsonObject.getLongOrNull("parent_id") ?: Category.NO_PARENT_ID,
@@ -941,10 +945,10 @@ class SocketClient private constructor() : SocketRepository {
 
             val categories = mutableListOf<Category>()
             for (i in 0 until categoryListJSONArray.length()) {
-                (categoryListJSONArray[i] as? JSONObject?)?.let { categoryJson ->
-//                Logger.debug(TAG, "categoryJson: $categoryJson")
-                    val parsed = parse(categoryJson)
-                    categories.add(parsed)
+                val categoryJSONObject = categoryListJSONArray[i]
+                if (categoryJSONObject is JSONObject) {
+                    val parsed = parse(categoryJSONObject)
+                    categories.add(parsed ?: continue)
                 }
             }
 
