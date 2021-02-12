@@ -239,11 +239,14 @@ class SocketClient private constructor() : SocketRepository {
         }
     }
 
-    override fun release() {
-        Logger.debug(TAG, "release()")
+    override fun disconnect() {
+        Logger.debug(TAG, "disconnect()")
 
-        socket?.off()
         socket?.disconnect()
+    }
+
+    override fun release() {
+        socket?.off()
         socket = null
     }
 
@@ -589,7 +592,7 @@ class SocketClient private constructor() : SocketRepository {
 
             Logger.debug(TAG, "[FORM_FINAL] data: $data")
 
-            val taskJson = data.optJSONObject("task")
+            val taskJson = data.getJSONObjectOrNull("task")
             val trackId = taskJson?.getStringOrNull("track_id")
             val taskId = taskJson?.getLongOrNull("task_id")
             val message = data.getStringOrNull("message")
@@ -933,7 +936,7 @@ class SocketClient private constructor() : SocketRepository {
             val categoryListJSONArray = data.optJSONArray("category_list") ?: return@Listener
 
             fun parse(jsonObject: JSONObject): Category? {
-                val responsesJSONArray = jsonObject.getArrayOrEmpty("responses")
+                val responsesJSONArray = jsonObject.getJSONArrayOrEmpty("responses")
                 val responses = mutableListOf<Long>()
                 for (i in 0 until responsesJSONArray.length()) {
                     val responseId = responsesJSONArray[i]
@@ -951,7 +954,7 @@ class SocketClient private constructor() : SocketRepository {
                     photo = jsonObject.getStringOrNull("photo"),
                     responses = responses,
                     config = Category.Config(
-                        jsonObject.getObjectOrNull("config")?.getIntOrNull("order") ?: 0
+                        jsonObject.getJSONObjectOrNull("config")?.getIntOrNull("order") ?: 0
                     )
                 )
             }
