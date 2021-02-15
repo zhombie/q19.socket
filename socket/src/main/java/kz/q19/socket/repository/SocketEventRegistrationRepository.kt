@@ -28,8 +28,8 @@ interface SocketEventRegistrationRepository {
     fun registerLocationUpdateEventListener(): Boolean
     fun unregisterLocationUpdateEventListener(): Boolean
 
-    fun registerUserDialogFeedbackEventListener(): Boolean
-    fun unregisterUserDialogFeedbackEventListener(): Boolean
+    fun registerUserCallFeedbackEventListener(): Boolean
+    fun unregisterUserCallFeedbackEventListener(): Boolean
 
     fun registerFormInitializeEventListener(): Boolean
     fun unregisterFormInitializeEventListener(): Boolean

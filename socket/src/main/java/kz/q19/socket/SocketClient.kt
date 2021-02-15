@@ -71,10 +71,10 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.webRTCListener = listener
     }
 
-    override fun setDialogListener(listener: DialogListener?) {
-        Logger.debug(TAG, "setDialogListener() -> listener: $listener")
+    override fun setCallListener(listener: CallListener?) {
+        Logger.debug(TAG, "setCallListener() -> listener: $listener")
 
-        listenerInfo.dialogListener = listener
+        listenerInfo.callListener = listener
     }
 
     override fun setFormListener(listener: FormListener?) {
@@ -122,7 +122,7 @@ class SocketClient private constructor() : SocketRepository {
                 registerCallAgentGreetEventListener() &&
                 registerCallAgentTypingEventListener() &&
                 registerCard102UpdateEventListener() &&
-                registerUserDialogFeedbackEventListener() &&
+                registerUserCallFeedbackEventListener() &&
                 registerFormInitializeEventListener() &&
                 registerFormFinalizeEventListener() &&
                 registerSocketDisconnectEventListener()
@@ -191,10 +191,10 @@ class SocketClient private constructor() : SocketRepository {
     override fun unregisterLocationUpdateEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.LOCATION_UPDATE, onLocationUpdate)
 
-    override fun registerUserDialogFeedbackEventListener(): Boolean =
+    override fun registerUserCallFeedbackEventListener(): Boolean =
         registerEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
 
-    override fun unregisterUserDialogFeedbackEventListener(): Boolean =
+    override fun unregisterUserCallFeedbackEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FEEDBACK, onFeedbackListener)
 
     override fun registerFormInitializeEventListener(): Boolean =
@@ -359,8 +359,8 @@ class SocketClient private constructor() : SocketRepository {
         }) {}
     }
 
-    override fun sendUserDialogFeedback(rating: Int, chatId: Long) {
-        Logger.debug(TAG, "sendUserDialogFeedback() -> rating: $rating, chatId: $chatId")
+    override fun sendUserCallFeedback(rating: Int, chatId: Long) {
+        Logger.debug(TAG, "sendUserCallFeedback() -> rating: $rating, chatId: $chatId")
 
         emit(SocketEvent.Outgoing.USER_FEEDBACK, json {
             put("r", rating)
@@ -625,9 +625,9 @@ class SocketClient private constructor() : SocketRepository {
 
             val text = data.optString("text")
 
-            Logger.debug(TAG, "listenerInfo.dialogListener: ${listenerInfo.dialogListener}")
+//            Logger.debug(TAG, "listenerInfo.callListener: ${listenerInfo.callListener}")
 
-            listenerInfo.dialogListener?.onCallAgentGreet(fullName, photo, text)
+            listenerInfo.callListener?.onCallAgentGreet(fullName, photo, text)
         }
     }
 
@@ -669,9 +669,9 @@ class SocketClient private constructor() : SocketRepository {
                     }
                 }
 
-                listenerInfo.dialogListener?.onDialogFeedback(text, rateButtons)
+                listenerInfo.callListener?.onCallFeedback(text, rateButtons)
             } else {
-                listenerInfo.dialogListener?.onDialogFeedback(text, null)
+                listenerInfo.callListener?.onCallFeedback(text, null)
             }
         }
     }
@@ -689,7 +689,7 @@ class SocketClient private constructor() : SocketRepository {
             val count = data.getInt("count")
 //            val channel = userQueue.getInt("channel")
 
-            listenerInfo.dialogListener?.onPendingUsersQueueCount(count = count)
+            listenerInfo.callListener?.onPendingUsersQueueCount(count = count)
         }
     }
 
@@ -759,23 +759,23 @@ class SocketClient private constructor() : SocketRepository {
                 if (isHandled == true) return@Listener
             }
 
-            if (noOnline && !text.isNullOrBlank()) {
-                val isHandled = listenerInfo.dialogListener?.onNoOnlineCallAgents(text)
+            if (noOnline) {
+                val isHandled = listenerInfo.callListener?.onNoOnlineCallAgents(text)
                 if (isHandled == true) return@Listener
             }
 
-            if (action == CallAction.CHAT_TIMEOUT && !text.isNullOrBlank()) {
-                val isHandled = listenerInfo.dialogListener?.onLiveChatTimeout(text, time)
+            if (action == CallAction.CHAT_TIMEOUT) {
+                val isHandled = listenerInfo.callListener?.onLiveChatTimeout(text, time)
                 if (isHandled == true) return@Listener
             }
 
-            if (action == CallAction.OPERATOR_DISCONNECT && !text.isNullOrBlank()) {
-                val isHandled = listenerInfo.dialogListener?.onCallAgentDisconnected(text, time)
+            if (action == CallAction.OPERATOR_DISCONNECT) {
+                val isHandled = listenerInfo.callListener?.onCallAgentDisconnected(text, time)
                 if (isHandled == true) return@Listener
             }
 
-            if (action == CallAction.REDIRECT && !text.isNullOrBlank()) {
-                val isHandled = listenerInfo.dialogListener?.onUserRedirected(text, time)
+            if (action == CallAction.REDIRECT) {
+                val isHandled = listenerInfo.callListener?.onUserRedirected(text, time)
                 if (isHandled == true) return@Listener
             }
 
@@ -836,7 +836,7 @@ class SocketClient private constructor() : SocketRepository {
 
             if (!data.isNull("queued")) {
                 val queued = data.optInt("queued")
-                listenerInfo.dialogListener?.onPendingUsersQueueCount(text, queued)
+                listenerInfo.callListener?.onPendingUsersQueueCount(text, queued)
             }
 
             val attachments = mutableListOf<Media>()
