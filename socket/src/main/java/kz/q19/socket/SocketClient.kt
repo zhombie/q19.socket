@@ -209,6 +209,12 @@ class SocketClient private constructor() : SocketRepository {
     override fun unregisterFormFinalizeEventListener(): Boolean =
         unregisterEventListener(SocketEvent.Incoming.FORM_FINAL, onFormFinalListener)
 
+    override fun registerTaskMessageEventListener(): Boolean =
+        registerEventListener(SocketEvent.Incoming.TASK_MESSAGE, onTaskMessageListener)
+
+    override fun unregisterTaskMessageEventListener(): Boolean =
+        unregisterEventListener(SocketEvent.Incoming.TASK_MESSAGE, onTaskMessageListener)
+
     override fun registerSocketDisconnectEventListener(): Boolean {
         socket?.on(Socket.EVENT_DISCONNECT, onDisconnectListener)
         return true
@@ -584,13 +590,13 @@ class SocketClient private constructor() : SocketRepository {
 
     private val onFormFinalListener by lazy {
         Emitter.Listener { args ->
-            Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_FINAL}]: $args")
+//            Logger.debug(TAG, "event [${SocketEvent.Incoming.FORM_FINAL}]: $args")
 
             if (args.size != 1) return@Listener
 
             val data = args[0] as? JSONObject? ?: return@Listener
 
-            Logger.debug(TAG, "[FORM_FINAL] data: $data")
+            Logger.debug(TAG, "[${SocketEvent.Incoming.FORM_FINAL}] data: $data")
 
             val taskJson = data.getJSONObjectOrNull("task")
             val trackId = taskJson?.getStringOrNull("track_id")
@@ -1016,6 +1022,34 @@ class SocketClient private constructor() : SocketRepository {
             }
 
             listenerInfo.armListener?.onLocationUpdate(locationUpdates)
+        }
+    }
+
+    private val onTaskMessageListener by lazy {
+        Emitter.Listener { args ->
+            if (args.size != 1) return@Listener
+
+            val data = args[0] as? JSONObject? ?: return@Listener
+
+            Logger.debug(TAG, "[${SocketEvent.Incoming.TASK_MESSAGE}] data: $data")
+
+            val notificationJSONObject = data.getJSONObjectOrNull("notification")
+            val message = data.getStringOrNull("message") ?: return@Listener
+            val taskJSONObject = data.getJSONObjectOrNull("task") ?: return@Listener
+
+            listenerInfo.taskListener?.onTaskMessage(
+                TaskMessage(
+                    notification = TaskMessage.Notification(
+                        title = notificationJSONObject?.getStringOrNull("title"),
+                        url = notificationJSONObject?.getStringOrNull("url")
+                    ),
+                    message = message,
+                    task = TaskMessage.Task(
+                        id = taskJSONObject.getLong("id"),
+                        trackId = taskJSONObject.getStringOrNull("track_id")
+                    )
+                )
+            )
         }
     }
 

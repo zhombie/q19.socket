@@ -35,11 +35,11 @@ dependencies {
     implementation "androidx.annotation:annotation:1.1.0"
 
     // Q19
-    implementation 'com.github.zhombie:q19.domain:1.3.9'
-    implementation 'com.github.zhombie:q19.utils:1.1.0'
+    implementation 'com.github.zhombie:q19.domain:1.4.0'
+    implementation 'com.github.zhombie:q19.utils:1.1.1'
 
     // Socket.io
-    api ('io.socket:socket.io-client:1.0.0') {
+    api ('io.socket:socket.io-client:1.0.1') {
         // excluding org.json which is provided by Android
         exclude group: 'org.json', module: 'json'
     }

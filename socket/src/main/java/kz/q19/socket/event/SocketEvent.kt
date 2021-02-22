@@ -23,6 +23,8 @@ internal sealed class SocketEvent {
         const val OPERATOR_TYPING = "operator_typing"
 
         const val USER_QUEUE = "user_queue"
+
+        const val TASK_MESSAGE = "task_message"
     }
 
     object Outgoing : SocketEvent() {

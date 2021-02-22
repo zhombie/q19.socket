@@ -37,6 +37,9 @@ interface SocketEventRegistrationRepository {
     fun registerFormFinalizeEventListener(): Boolean
     fun unregisterFormFinalizeEventListener(): Boolean
 
+    fun registerTaskMessageEventListener(): Boolean
+    fun unregisterTaskMessageEventListener(): Boolean
+
     fun registerSocketDisconnectEventListener(): Boolean
     fun unregisterSocketDisconnectEventListener(): Boolean
 }

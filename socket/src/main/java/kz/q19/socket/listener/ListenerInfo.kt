@@ -5,6 +5,7 @@ internal class ListenerInfo {
     var chatBotListener: ChatBotListener? = null
     var callListener: CallListener? = null
     var formListener: FormListener? = null
+    var taskListener: TaskListener? = null
     var webRTCListener: WebRTCListener? = null
     var armListener: ARMListener? = null
 
@@ -13,6 +14,7 @@ internal class ListenerInfo {
         chatBotListener = null
         callListener = null
         formListener = null
+        taskListener = null
         webRTCListener = null
         armListener = null
     }
