@@ -89,6 +89,12 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.armListener = listener
     }
 
+    override fun setTaskListener(listener: TaskListener?) {
+        Logger.debug(TAG, "setTaskListener() -> listener: $listener")
+
+        listenerInfo.taskListener = listener
+    }
+
     override fun removeAllListeners() {
         Logger.debug(TAG, "removeAllListeners()")
 

@@ -9,6 +9,7 @@ interface SocketListenerRepository {
     fun setFormListener(listener: FormListener?)
     fun setWebRTCListener(listener: WebRTCListener?)
     fun setARMListener(listener: ARMListener?)
+    fun setTaskListener(listener: TaskListener?)
 
     fun removeAllListeners()
 }
