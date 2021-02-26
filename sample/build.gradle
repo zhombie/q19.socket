@@ -33,6 +33,7 @@ dependencies {
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
+    // Library
     implementation project(":socket")
 
     // AppCompat

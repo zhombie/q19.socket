@@ -559,31 +559,31 @@ class SocketClient private constructor() : SocketRepository {
 
             Logger.debug(TAG, "[${SocketEvent.Incoming.FORM_INIT}] data: $data")
 
-            val formJson = data.getJSONObject("form")
-            val formFieldsJsonArray = data.getJSONArray("form_fields")
+            val formJSONObject = data.getJSONObject("form")
+            val formFieldsJSONArray = data.getJSONArray("form_fields")
 
             val fields = mutableListOf<Form.Field>()
-            for (i in 0 until formFieldsJsonArray.length()) {
-                val formFieldJson = formFieldsJsonArray[i]
-                if (formFieldJson is JSONObject) {
+            for (i in 0 until formFieldsJSONArray.length()) {
+                val formFieldJSONObject = formFieldsJSONArray[i]
+                if (formFieldJSONObject is JSONObject) {
                     fields.add(
                         Form.Field(
-                            id = formFieldJson.getLong("id"),
-                            title = formFieldJson.getStringOrNull("title") ?: continue,
-                            prompt = formFieldJson.getStringOrNull("prompt"),
-                            type = findEnumBy { it.key == formFieldJson.getString("type") } ?: continue,
-                            defaultValue = formFieldJson.getStringOrNull("default"),
+                            id = formFieldJSONObject.getLong("id"),
+                            title = formFieldJSONObject.getStringOrNull("title") ?: continue,
+                            prompt = formFieldJSONObject.getStringOrNull("prompt"),
+                            type = findEnumBy { it.key == formFieldJSONObject.getString("type") } ?: continue,
+                            defaultValue = formFieldJSONObject.getStringOrNull("default"),
                             configs = null,
-                            level = formFieldJson.optInt("level", -1),
+                            level = formFieldJSONObject.optInt("level", -1),
                         )
                     )
                 }
             }
 
             val form = Form(
-                id = formJson.getLong("id"),
-                title = formJson.getStringOrNull("title") ?: "",
-                isFlexible = formJson.optInt("is_flex", -1) == 1,
+                id = formJSONObject.getLong("id"),
+                title = formJSONObject.getStringOrNull("title") ?: "",
+                isFlexible = formJSONObject.optInt("is_flex", -1) == 1,
                 fields = fields,
                 configs = Form.Configs()
             )
@@ -604,9 +604,9 @@ class SocketClient private constructor() : SocketRepository {
 
             Logger.debug(TAG, "[${SocketEvent.Incoming.FORM_FINAL}] data: $data")
 
-            val taskJson = data.getJSONObjectOrNull("task")
-            val trackId = taskJson?.getStringOrNull("track_id")
-            val taskId = taskJson?.getLongOrNull("task_id")
+            val taskJSONObject = data.getJSONObjectOrNull("task")
+            val trackId = taskJSONObject?.getStringOrNull("track_id")
+            val taskId = taskJSONObject?.getLongOrNull("task_id")
             val message = data.getStringOrNull("message")
             val success = data.optBoolean("success", false)
 
@@ -723,29 +723,29 @@ class SocketClient private constructor() : SocketRepository {
             val time = data.optLong("time")
             val sender = data.getStringOrNull("sender")
             val from = data.getStringOrNull("from")
-            val mediaJsonObject = data.optJSONObject("media")
-            val rtcJsonObject = data.optJSONObject("rtc")
+            val mediaJSONObject = data.optJSONObject("media")
+            val rtcJSONObject = data.optJSONObject("rtc")
             val fuzzyTask = data.optBoolean("fuzzy_task")
-            val attachmentsJsonArray = data.optJSONArray("attachments")
-            val replyMarkupJsonObject = data.optJSONObject("reply_markup")
-            val formJsonObject = data.optJSONObject("form")
+            val attachmentsJSONArray = data.optJSONArray("attachments")
+            val replyMarkupJSONObject = data.optJSONObject("reply_markup")
+            val formJSONObject = data.optJSONObject("form")
 
-            val inlineKeyboard = replyMarkupJsonObject?.optJSONArray("inline_keyboard")
+            val inlineKeyboardJSONArray = replyMarkupJSONObject?.optJSONArray("inline_keyboard")
             var keyboard: Keyboard? = null
             val rows = mutableListOf<List<Button>>()
-            if (inlineKeyboard != null) {
-                for (i in 0 until inlineKeyboard.length()) {
-                    val row = inlineKeyboard[i]
+            if (inlineKeyboardJSONArray != null) {
+                for (i in 0 until inlineKeyboardJSONArray.length()) {
+                    val row = inlineKeyboardJSONArray[i]
                     if (row is JSONArray) {
                         val buttons = mutableListOf<Button>()
                         for (j in 0 until row.length()) {
-                            val buttonJsonObject = row.get(j)
-                            if (buttonJsonObject !is JSONObject) {
+                            val buttonJSONObject = row.get(j)
+                            if (buttonJSONObject !is JSONObject) {
                                 continue
                             }
-                            val buttonText = buttonJsonObject.getString("text")
-                            val callbackData = buttonJsonObject.getStringOrNull("callback_data")
-                            val url = buttonJsonObject.getStringOrNull("url")
+                            val buttonText = buttonJSONObject.getString("text")
+                            val callbackData = buttonJSONObject.getStringOrNull("callback_data")
+                            val url = buttonJSONObject.getStringOrNull("url")
                             if (!callbackData.isNullOrBlank()) {
                                 buttons.add(CallbackButton(text = buttonText, payload = callbackData))
                             } else if (!url.isNullOrBlank()) {
@@ -791,8 +791,8 @@ class SocketClient private constructor() : SocketRepository {
                 if (isHandled == true) return@Listener
             }
 
-            if (rtcJsonObject != null) {
-                when (findEnumBy<QRTCAction> { it.value == rtcJsonObject.getStringOrNull("type") }) {
+            if (rtcJSONObject != null) {
+                when (findEnumBy<QRTCAction> { it.value == rtcJSONObject.getStringOrNull("type") }) {
                     QRTCAction.START -> {
                         when (action) {
                             CallAction.CALL_ACCEPT ->
@@ -810,7 +810,7 @@ class SocketClient private constructor() : SocketRepository {
                     QRTCAction.READY ->
                         listenerInfo.webRTCListener?.onCallReady()
                     QRTCAction.OFFER -> {
-                        val sdp = rtcJsonObject.getString("sdp")
+                        val sdp = rtcJSONObject.getString("sdp")
 
                         listenerInfo.webRTCListener?.onCallOffer(
                             SessionDescription(
@@ -820,7 +820,7 @@ class SocketClient private constructor() : SocketRepository {
                         )
                     }
                     QRTCAction.ANSWER -> {
-                        val sdp = rtcJsonObject.getString("sdp")
+                        val sdp = rtcJSONObject.getString("sdp")
 
                         listenerInfo.webRTCListener?.onCallAnswer(
                             SessionDescription(
@@ -832,15 +832,15 @@ class SocketClient private constructor() : SocketRepository {
                     QRTCAction.CANDIDATE ->
                         listenerInfo.webRTCListener?.onRemoteIceCandidate(
                             IceCandidate(
-                                sdpMid = rtcJsonObject.getString("id"),
-                                sdpMLineIndex = rtcJsonObject.getInt("label"),
-                                sdp = rtcJsonObject.getString("candidate")
+                                sdpMid = rtcJSONObject.getString("id"),
+                                sdpMLineIndex = rtcJSONObject.getInt("label"),
+                                sdp = rtcJSONObject.getString("candidate")
                             )
                         )
                     QRTCAction.HANGUP ->
                         listenerInfo.webRTCListener?.onPeerHangupCall()
                     else -> {
-                        Logger.error(TAG, "Unsupported type for: $rtcJsonObject")
+                        Logger.error(TAG, "Unsupported type for: $rtcJSONObject")
                     }
                 }
                 return@Listener
@@ -852,13 +852,13 @@ class SocketClient private constructor() : SocketRepository {
             }
 
             val attachments = mutableListOf<Media>()
-            if (attachmentsJsonArray != null) {
-                for (i in 0 until attachmentsJsonArray.length()) {
-                    val attachment = attachmentsJsonArray[i]
+            if (attachmentsJSONArray != null) {
+                for (i in 0 until attachmentsJSONArray.length()) {
+                    val attachment = attachmentsJSONArray[i]
                     if (attachment is JSONObject) {
                         attachments.add(
                             Media(
-                                id = -1,
+                                id = attachment.getStringOrNull("hash") ?: "-1",
                                 title = attachment.getStringOrNull("title"),
                                 extension = findEnumBy { it.value == attachment.getStringOrNull("ext") },
                                 type = findEnumBy { it.key == attachment.getStringOrNull("type") },
@@ -871,59 +871,21 @@ class SocketClient private constructor() : SocketRepository {
                 }
             }
 
-            var media: Media? = null
-            if (mediaJsonObject != null) {
-                val image = mediaJsonObject.getStringOrNull("image")
-                val audio = mediaJsonObject.getStringOrNull("audio")
-                val video = mediaJsonObject.getStringOrNull("video")
-                val document = mediaJsonObject.getStringOrNull("document")
-                val file = mediaJsonObject.getStringOrNull("file")
-
-                val name = mediaJsonObject.getStringOrNull("name")
-                val ext = mediaJsonObject.getStringOrNull("ext")
-
-                val pair = if (!ext.isNullOrBlank()) {
-                    if (!image.isNullOrBlank()) {
-                        Media.Type.IMAGE to image
-                    } else if (!audio.isNullOrBlank()) {
-                        Media.Type.AUDIO to audio
-                    } else if (!video.isNullOrBlank()) {
-                        Media.Type.VIDEO to video
-                    } else if (!document.isNullOrBlank()) {
-                        Media.Type.DOCUMENT to document
-                    } else if (!file.isNullOrBlank()) {
-                        Media.Type.FILE to file
-                    } else {
-                        null
-                    }
-                } else {
-                    null
-                }
-
-                media = Media(
-                    id = -1,
-                    title = name,
-                    extension = findEnumBy { it.value == ext },
-                    urlPath = pair?.second,
-                    type = pair?.first
-                )
-            }
-
             val message = Message.Builder()
                 .setId(id)
                 .setType(Message.Type.INCOMING)
                 .setText(text)
                 .setKeyboard(keyboard)
-                .setMedia(media)
+                .setMedia(parseMedia(mediaJSONObject))
                 .setAttachments(attachments)
                 .setCreatedAt(time)
                 .build()
 
-            if (formJsonObject != null && formJsonObject.has("id")) {
+            if (formJSONObject != null && formJSONObject.has("id")) {
                 val form = Form(
-                    id = formJsonObject.optLong("id"),
-                    title = formJsonObject.getStringOrNull("title") ?: "",
-                    prompt = formJsonObject.getStringOrNull("prompt"),
+                    id = formJSONObject.optLong("id"),
+                    title = formJSONObject.getStringOrNull("title") ?: "",
+                    prompt = formJSONObject.getStringOrNull("prompt"),
                     fields = emptyList()
                 )
                 if (listenerInfo.formListener?.onFormFound(message, form) == true) {
@@ -1040,20 +1002,24 @@ class SocketClient private constructor() : SocketRepository {
             Logger.debug(TAG, "[${SocketEvent.Incoming.TASK_MESSAGE}] data: $data")
 
             val notificationJSONObject = data.getJSONObjectOrNull("notification")
-            val message = data.getStringOrNull("message") ?: return@Listener
             val taskJSONObject = data.getJSONObjectOrNull("task") ?: return@Listener
+            val id = data.getLongOrNull("id")
+            val text = data.getStringOrNull("text")
+            val mediaJSONObject = data.getJSONObjectOrNull("media")
 
             listenerInfo.taskListener?.onTaskMessage(
                 TaskMessage(
+                    id = id ?: -1,
                     notification = TaskMessage.Notification(
                         title = notificationJSONObject?.getStringOrNull("title"),
                         url = notificationJSONObject?.getStringOrNull("url")
                     ),
-                    message = message,
                     task = TaskMessage.Task(
                         id = taskJSONObject.getLong("id"),
                         trackId = taskJSONObject.getStringOrNull("track_id")
-                    )
+                    ),
+                    text = text,
+                    media = parseMedia(mediaJSONObject)
                 )
             )
         }
@@ -1065,6 +1031,48 @@ class SocketClient private constructor() : SocketRepository {
 
             listenerInfo.socketStateListener?.onSocketDisconnect()
         }
+    }
+
+    private fun parseMedia(jsonObject: JSONObject?): Media? {
+        if (jsonObject == null) return null
+
+        val image = jsonObject.getStringOrNull("image")
+        val audio = jsonObject.getStringOrNull("audio")
+        val video = jsonObject.getStringOrNull("video")
+        val document = jsonObject.getStringOrNull("document")
+        val file = jsonObject.getStringOrNull("file")
+
+        val hash = jsonObject.getStringOrNull("hash")
+        val name = jsonObject.getStringOrNull("name")
+        val ext = jsonObject.getStringOrNull("ext")
+
+        val pair = if (!ext.isNullOrBlank()) {
+            if (!image.isNullOrBlank()) {
+                Media.Type.IMAGE to image
+            } else if (!audio.isNullOrBlank()) {
+                Media.Type.AUDIO to audio
+            } else if (!video.isNullOrBlank()) {
+                Media.Type.VIDEO to video
+            } else if (!document.isNullOrBlank()) {
+                Media.Type.DOCUMENT to document
+            } else if (!file.isNullOrBlank()) {
+                Media.Type.FILE to file
+            } else {
+                null
+            }
+        } else {
+            null
+        }
+
+        if (pair == null) return null
+
+        return Media(
+            id = hash ?: "-1",
+            title = name,
+            extension = findEnumBy { it.value == ext },
+            urlPath = pair.second,
+            type = pair.first
+        )
     }
 
 }

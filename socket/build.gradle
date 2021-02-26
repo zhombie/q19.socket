@@ -35,7 +35,7 @@ dependencies {
     implementation "androidx.annotation:annotation:1.1.0"
 
     // Q19
-    implementation 'com.github.zhombie:q19.domain:1.4.0'
+    implementation 'com.github.zhombie:q19.domain:1.4.2'
     implementation 'com.github.zhombie:q19.utils:1.1.1'
 
     // Socket.io
