@@ -810,22 +810,22 @@ class SocketClient private constructor() : SocketRepository {
                     QRTCAction.READY ->
                         listenerInfo.webRTCListener?.onCallReady()
                     QRTCAction.OFFER -> {
-                        val sdp = rtcJSONObject.getString("sdp")
+                        val sdp = rtcJSONObject.getStringOrNull("sdp")
 
                         listenerInfo.webRTCListener?.onCallOffer(
                             SessionDescription(
                                 type = SessionDescription.Type.OFFER,
-                                description = sdp
+                                description = sdp ?: ""
                             )
                         )
                     }
                     QRTCAction.ANSWER -> {
-                        val sdp = rtcJSONObject.getString("sdp")
+                        val sdp = rtcJSONObject.getStringOrNull("sdp")
 
                         listenerInfo.webRTCListener?.onCallAnswer(
                             SessionDescription(
                                 type = SessionDescription.Type.ANSWER,
-                                description = sdp
+                                description = sdp ?: ""
                             )
                         )
                     }
