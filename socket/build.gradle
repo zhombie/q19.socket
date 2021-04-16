@@ -32,11 +32,11 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
     // Annotation
-    implementation "androidx.annotation:annotation:1.1.0"
+    implementation "androidx.annotation:annotation:1.2.0"
 
     // Q19
-    implementation 'com.github.zhombie:q19.domain:1.4.2'
-    implementation 'com.github.zhombie:q19.utils:1.1.1'
+    implementation 'com.github.zhombie:q19.domain:1.4.3'
+    implementation 'com.github.zhombie:q19.utils:1.1.2'
 
     // Socket.io
     api ('io.socket:socket.io-client:1.0.1') {
