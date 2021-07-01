@@ -1,12 +1,18 @@
 package kz.q19.socket
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import kz.q19.socket.listener.SocketStateListener
+import kz.q19.domain.model.language.Language
 
 class MainActivity : AppCompatActivity(), SocketStateListener {
+
+    companion object {
+        private val TAG = MainActivity::class.java.simpleName
+    }
 
     private var textView: TextView? = null
     private var button: Button? = null
@@ -19,6 +25,8 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
 
         textView = findViewById(R.id.textView)
         button = findViewById(R.id.button)
+
+        SocketClientConfig.init(true, Language.RUSSIAN)
 
         textView?.text = "Status: IDLE"
 
@@ -43,10 +51,14 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
     }
 
     override fun onDestroy() {
-        socketClient?.disconnect()
-        socketClient?.setSocketStateListener(null)
-        socketClient = null
         super.onDestroy()
+
+        socketClient?.disconnect()
+        socketClient?.removeAllListeners()
+        socketClient = null
+
+        textView = null
+        button = null
     }
 
     /**
@@ -54,7 +66,8 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
      */
 
     override fun onSocketConnect() {
-        println("onSocketConnect()")
+        Log.d(TAG, "onSocketConnect()")
+
         runOnUiThread {
             textView?.text = "Status: Connected"
 
@@ -63,7 +76,7 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
     }
 
     override fun onSocketDisconnect() {
-        println("onSocketDisconnect()")
+        Log.d(TAG, "onSocketDisconnect()")
 
         socketClient?.release()
 
