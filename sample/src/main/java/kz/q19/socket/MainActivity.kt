@@ -5,8 +5,8 @@ import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import kz.q19.socket.listener.SocketStateListener
 import kz.q19.domain.model.language.Language
+import kz.q19.socket.listener.SocketStateListener
 
 class MainActivity : AppCompatActivity(), SocketStateListener {
 

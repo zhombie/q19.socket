@@ -14,6 +14,8 @@ data class CallInitialization constructor(
 
     val device: Device? = null,
 
+    val serviceCode: String? = null,
+
     val language: Language
 ) {
 

@@ -289,6 +289,13 @@ class SocketClient private constructor() : SocketRepository {
             putIfValueNotNull("domain", callInitialization.domain)
             putIfValueNotNull("topic", callInitialization.topic)
 
+            if (callInitialization.location != null) {
+                put("location", json {
+                    put("lat", callInitialization.location.latitude)
+                    put("lon", callInitialization.location.longitude)
+                })
+            }
+
             if (callInitialization.device != null) {
                 put("device", json {
                     putIfValueNotNull("os", callInitialization.device.os)
@@ -307,12 +314,7 @@ class SocketClient private constructor() : SocketRepository {
                 })
             }
 
-            if (callInitialization.location != null) {
-                put("location", json {
-                    put("lat", callInitialization.location.latitude)
-                    put("lon", callInitialization.location.longitude)
-                })
-            }
+            putIfValueNotNull("service_code", callInitialization.serviceCode)
 
             put("lang", callInitialization.language.key)
         }) {}
