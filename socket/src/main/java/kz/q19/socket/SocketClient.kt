@@ -107,7 +107,10 @@ class SocketClient private constructor() : SocketRepository {
         val options = IO.Options()
         options.reconnection = true
         options.reconnectionAttempts = 3
-        options.reconnectionDelayMax = 3000L
+        options.reconnectionDelay = 1_000
+        options.reconnectionDelayMax = 5_000
+        options.randomizationFactor = 0.5
+        options.timeout = 20_000
 
         socket = IO.socket(url, options)
     }

@@ -9,13 +9,9 @@ data class CallInitialization constructor(
     val userId: Long? = null,
     val domain: String? = null,
     val topic: String? = null,
-
     val location: Location? = null,
-
     val device: Device? = null,
-
     val serviceCode: String? = null,
-
     val language: Language
 ) {
 

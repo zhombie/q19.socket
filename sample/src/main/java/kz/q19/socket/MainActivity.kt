@@ -40,9 +40,9 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
             } else {
                 socketClient = SocketClient.getInstance()
                 socketClient?.create("https://kenes2.vlx.kz/user")
+                socketClient?.setSocketStateListener(this)
                 socketClient?.registerSocketConnectEventListener()
                 socketClient?.registerSocketDisconnectEventListener()
-                socketClient?.setSocketStateListener(this)
                 socketClient?.connect()
 
                 textView?.text = "Status: Connecting"
