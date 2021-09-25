@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity(), SocketStateListener {
         Log.d(TAG, "onSocketConnect()")
 
         runOnUiThread {
-            textView?.text = "Status: Connected"
+            textView?.text = "Status: Connected\nid: ${socketClient?.getId()}"
 
             button?.text = "Disconnect"
         }
