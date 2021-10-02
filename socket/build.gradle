@@ -42,9 +42,15 @@ dependencies {
     implementation 'com.github.zhombie:q19.domain:1.5.0'
     implementation 'com.github.zhombie:q19.utils:1.1.7'
 
+    // OkHTTPClient
+    api 'com.squareup.okhttp3:okhttp:4.9.2'
+
     // Socket.io
     api ('io.socket:socket.io-client:1.0.1') {
         // excluding org.json which is provided by Android
         exclude group: 'org.json', module: 'json'
+        // excluding org.squareup.* which is provided by third-party dependency
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp'
+        exclude group: 'com.squareup.okio', module: 'okio'
     }
 }

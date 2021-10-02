@@ -28,11 +28,6 @@ import kz.q19.utils.json.*
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
-import java.security.SecureRandom
-import java.security.cert.X509Certificate
-import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
 
 class SocketClient private constructor() : SocketRepository {
 
@@ -107,67 +102,22 @@ class SocketClient private constructor() : SocketRepository {
         listenerInfo.clear()
     }
 
-    override fun create(url: String, isSSLClientEnabled: Boolean) {
-        Logger.debug(TAG, "create() -> url: $url, isSSLClientEnabled: $isSSLClientEnabled")
+    override fun create(url: String, options: IO.Options, okHttpClient: OkHttpClient?) {
+        Logger.debug(TAG, "create() -> $url, $options, $okHttpClient")
 
-        val options = IO.Options()
-        options.reconnection = true
-        options.reconnectionAttempts = 3
-        options.reconnectionDelay = 1_000
-        options.reconnectionDelayMax = 5_000
-        options.randomizationFactor = 0.5
-        options.timeout = 20_000
-
-        if (isSSLClientEnabled) {
-            // Create a trust manager that does not validate certificate chains
-            var trustAllCerts: Array<TrustManager> = arrayOf()
-            try {
-                trustAllCerts = arrayOf(object : X509TrustManager {
-                    override fun checkClientTrusted(
-                        chain: Array<out X509Certificate>?,
-                        authType: String?
-                    ) {
-                    }
-
-                    override fun checkServerTrusted(
-                        chain: Array<out X509Certificate>?,
-                        authType: String?
-                    ) {
-                    }
-
-                    override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-                })
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            // Install the all-trusting trust manager
-            var sslContext: SSLContext? = null
-            try {
-                sslContext = SSLContext.getInstance("SSL")
-                sslContext?.init(null, trustAllCerts, SecureRandom())
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-            val okHttpClient = OkHttpClient.Builder()
-                .apply {
-                    if (sslContext != null && trustAllCerts.isNotEmpty() && trustAllCerts.first() is X509TrustManager) {
-                        // Create an ssl socket factory with our all-trusting manager
-                        sslSocketFactory(
-                            sslContext.socketFactory,
-                            trustAllCerts.first() as X509TrustManager
-                        )
-                        hostnameVerifier { _, _ -> true }
-                    }
-                }
-                .build()
-
-            IO.setDefaultOkHttpWebSocketFactory(okHttpClient)
+        if (okHttpClient != null) {
             IO.setDefaultOkHttpCallFactory(okHttpClient)
+            IO.setDefaultOkHttpWebSocketFactory(okHttpClient)
 
-            options.callFactory = okHttpClient
-            options.webSocketFactory = okHttpClient
+            Logger.debug(TAG, "create() -> callFactory: ${options.callFactory}")
+            if (options.callFactory == null) {
+                options.callFactory = okHttpClient
+            }
+
+            Logger.debug(TAG, "create() -> webSocketFactory: ${options.webSocketFactory}")
+            if (options.webSocketFactory == null) {
+                options.webSocketFactory = okHttpClient
+            }
         }
 
         socket = IO.socket(url, options)
