@@ -6,6 +6,8 @@ import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import kz.garage.json.*
+import kz.garage.kotlin.findEnumBy
 import kz.q19.domain.model.*
 import kz.q19.domain.model.call.CallType
 import kz.q19.domain.model.form.Form
@@ -23,8 +25,6 @@ import kz.q19.socket.listener.*
 import kz.q19.socket.model.*
 import kz.q19.socket.repository.SocketRepository
 import kz.q19.socket.utils.Logger
-import kz.q19.utils.enums.findEnumBy
-import kz.q19.utils.json.*
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -280,7 +280,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendCallInitialization(callInitialization: CallInitialization) {
         Logger.debug(TAG, "sendCallInitialization() -> $callInitialization")
 
-        emit(SocketEvent.Outgoing.INITIALIZE, json {
+        emit(SocketEvent.Outgoing.INITIALIZE, jsonObject {
             when (callInitialization.callType) {
                 CallType.TEXT -> {
                     // Ignored
@@ -291,9 +291,7 @@ class SocketClient private constructor() : SocketRepository {
                 CallType.VIDEO -> {
                     put("media", "video")
                 }
-                else -> {
-                    return@json
-                }
+                else -> return@jsonObject
             }
 
             putIfValueNotNull("user_id", callInitialization.userId)
@@ -301,14 +299,14 @@ class SocketClient private constructor() : SocketRepository {
             putIfValueNotNull("topic", callInitialization.topic)
 
             if (callInitialization.location != null) {
-                put("location", json {
+                put("location", jsonObject {
                     put("lat", callInitialization.location.latitude)
                     put("lon", callInitialization.location.longitude)
                 })
             }
 
             if (callInitialization.device != null) {
-                put("device", json {
+                put("device", jsonObject {
                     putIfValueNotNull("os", callInitialization.device.os)
                     putIfValueNotNull("os_ver", callInitialization.device.osVersion)
                     putIfValueNotNull("name", callInitialization.device.name)
@@ -316,7 +314,7 @@ class SocketClient private constructor() : SocketRepository {
                     putIfValueNotNull("app_ver", callInitialization.device.appVersion)
 
                     if (callInitialization.device.battery != null) {
-                        put("battery", json {
+                        put("battery", jsonObject {
                             putIfValueNotNull("percentage", callInitialization.device.battery.percentage)
                             putIfValueNotNull("is_charging", callInitialization.device.battery.isCharging)
                             putIfValueNotNull("temperature", callInitialization.device.battery.temperature)
@@ -340,7 +338,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun getCategories(parentId: Long) {
         Logger.debug(TAG, "getCategories() -> parentId: $parentId")
 
-        emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
+        emit(SocketEvent.Outgoing.USER_DASHBOARD, jsonObject {
             put("action", "get_category_list")
             put("parent_id", parentId)
             put("lang", language)
@@ -350,7 +348,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun getResponse(id: Long) {
         Logger.debug(TAG, "getResponse() -> id: $id")
 
-        emit(SocketEvent.Outgoing.USER_DASHBOARD, json {
+        emit(SocketEvent.Outgoing.USER_DASHBOARD, jsonObject {
             put("action", "get_response")
             put("id", id)
             put("lang", language)
@@ -360,7 +358,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendUserLanguage(language: Language) {
         Logger.debug(TAG, "sendUserLanguage() -> language: $language")
 
-        emit(SocketEvent.Outgoing.USER_LANGUAGE, json {
+        emit(SocketEvent.Outgoing.USER_LANGUAGE, jsonObject {
             put("language", language.key)
         }) {}
     }
@@ -370,7 +368,7 @@ class SocketClient private constructor() : SocketRepository {
 
         val text = message.trim()
 
-        emit(SocketEvent.Outgoing.USER_MESSAGE, json {
+        emit(SocketEvent.Outgoing.USER_MESSAGE, jsonObject {
             put("text", text)
             put("lang", language)
         }) {}
@@ -379,7 +377,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendUserMediaMessage(type: Media.Type, url: String) {
         Logger.debug(TAG, "sendUserMediaMessage() -> type: $type, url: $url")
 
-        emit(SocketEvent.Outgoing.USER_MESSAGE, json {
+        emit(SocketEvent.Outgoing.USER_MESSAGE, jsonObject {
             put(type.key, url)
         }) {}
     }
@@ -387,7 +385,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendUserCallFeedback(rating: Int, chatId: Long) {
         Logger.debug(TAG, "sendUserCallFeedback() -> rating: $rating, chatId: $chatId")
 
-        emit(SocketEvent.Outgoing.USER_FEEDBACK, json {
+        emit(SocketEvent.Outgoing.USER_FEEDBACK, jsonObject {
             put("r", rating)
             put("chat_id", chatId)
         }) {}
@@ -408,7 +406,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendCallAction(action: CallAction) {
         Logger.debug(TAG, "sendCallAction() -> $action")
 
-        emit(SocketEvent.Outgoing.MESSAGE, json {
+        emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
             put("action", action.value)
         }) {}
     }
@@ -416,8 +414,8 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendQRTCAction(action: QRTCAction) {
         Logger.debug(TAG, "sendQRTCAction() -> $action")
 
-        emit(SocketEvent.Outgoing.MESSAGE, json {
-            put("rtc", json {
+        emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
+            put("rtc", jsonObject {
                 put("type", action.value)
             })
         }) {}
@@ -426,8 +424,8 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendLocalSessionDescription(sessionDescription: SessionDescription) {
         Logger.debug(TAG, "sendSessionDescription() -> $sessionDescription")
 
-        emit(SocketEvent.Outgoing.MESSAGE, json {
-            put("rtc", json {
+        emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
+            put("rtc", jsonObject {
                 put("type", when (sessionDescription.type) {
                     SessionDescription.Type.OFFER -> "offer"
                     SessionDescription.Type.ANSWER -> "answer"
@@ -440,8 +438,8 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendLocalIceCandidate(iceCandidate: IceCandidate) {
         Logger.debug(TAG, "sendIceCandidate() -> $iceCandidate")
 
-        emit(SocketEvent.Outgoing.MESSAGE, json {
-            put("rtc", json {
+        emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
+            put("rtc", jsonObject {
                 put("type", "candidate")
                 put("id", iceCandidate.sdpMid)
                 put("label", iceCandidate.sdpMLineIndex)
@@ -453,7 +451,7 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendUserLocation(id: String, location: Location) {
         Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
-        emit(SocketEvent.Outgoing.MESSAGE, json {
+        emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
             put("action", "location")
             put("id", id)
             put("provider", location.provider)
@@ -469,7 +467,7 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun sendFuzzyTaskConfirmation(name: String, email: String, phone: String) {
-        emit(SocketEvent.Outgoing.CONFIRM_FUZZY_TASK, json {
+        emit(SocketEvent.Outgoing.CONFIRM_FUZZY_TASK, jsonObject {
             put("name", name)
             put("email", email)
             put("phone", phone)
@@ -478,19 +476,19 @@ class SocketClient private constructor() : SocketRepository {
     }
 
     override fun sendExternal(callbackData: String?) {
-        emit(SocketEvent.Outgoing.EXTERNAL, json {
+        emit(SocketEvent.Outgoing.EXTERNAL, jsonObject {
             put("callback_data", callbackData)
         }) {}
     }
 
     override fun sendFormInitialize(formId: Long) {
-        emit(SocketEvent.Outgoing.FORM_INIT, json {
+        emit(SocketEvent.Outgoing.FORM_INIT, jsonObject {
             put("form_id", formId)
         }) {}
     }
 
     override fun sendFormFinalize(sender: Sender?, form: Form, extraFields: List<Form.Field>) {
-        emit(SocketEvent.Outgoing.FORM_FINAL, json {
+        emit(SocketEvent.Outgoing.FORM_FINAL, jsonObject {
             putIfValueNotNull("sender", sender?.get())
 
             put("form_id", form.id)
@@ -499,16 +497,16 @@ class SocketClient private constructor() : SocketRepository {
             val fields = JSONObject()
 
             extraFields.forEach {
-                fields.put(it.title, json { put(it.type.key, it.value) })
+                fields.put(it.title, jsonObject { put(it.type.key, it.value) })
             }
 
             form.fields.forEach { field ->
                 if (field.isFlexible) {
-                    nodes.put(json {
+                    nodes.put(jsonObject {
                         put(field.type.key, field.value)
                         put(
                             "${field.type.key}_info",
-                            json {
+                            jsonObject {
                                 putIfValueNotNull("extension", field.info?.extension?.value)
                                 putIfValueNotNull("width", field.info?.width)
                                 putIfValueNotNull("height", field.info?.height)
@@ -523,12 +521,12 @@ class SocketClient private constructor() : SocketRepository {
                 } else {
                     val title = field.title
                     if (title.isNotBlank()) {
-                        fields.put(title, json { put(field.type.key, field.value) })
+                        fields.put(title, jsonObject { put(field.type.key, field.value) })
                     }
                 }
             }
 
-            put("form_data", json {
+            put("form_data", jsonObject {
                 put("nodes", nodes)
                 put("fields", fields)
             })
