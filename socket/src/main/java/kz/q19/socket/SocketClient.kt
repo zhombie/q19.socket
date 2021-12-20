@@ -7,7 +7,7 @@ import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
 import kz.garage.json.*
-import kz.garage.kotlin.findEnumBy
+import kz.garage.kotlin.enums.findEnumBy
 import kz.q19.domain.model.*
 import kz.q19.domain.model.call.CallType
 import kz.q19.domain.model.form.Form
