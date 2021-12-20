@@ -49,11 +49,11 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.7.0'
 
     // Q19
-    implementation 'com.github.zhombie:q19.domain:1.5.3'
+    implementation 'com.github.zhombie:q19.domain:1.5.5'
 
     // OkHTTPClient
-    implementation 'com.squareup.okhttp3:okhttp:4.9.2'
-    implementation 'com.squareup.okhttp3:okhttp-tls:4.9.2'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.okhttp3:okhttp-tls:4.9.3'
 
     // Library
     implementation project(':socket')

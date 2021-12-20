@@ -4,6 +4,10 @@ android {
     }
 }
 
+ext {
+    garage_version = '1.0.9'
+}
+
 dependencies {
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
@@ -11,15 +15,15 @@ dependencies {
     // Annotation
     implementation 'androidx.annotation:annotation:1.3.0'
 
-    implementation 'com.github.zhombie.garage:file-extension:1.0.2'
-    implementation 'com.github.zhombie.garage:json:1.0.2'
-    implementation 'com.github.zhombie.garage:kotlin:1.0.2'
+    implementation "com.github.zhombie.garage:file-extension:$garage_version"
+    implementation "com.github.zhombie.garage:json:$garage_version"
+    implementation "com.github.zhombie.garage:kotlin:$garage_version"
 
     // Q19
-    implementation 'com.github.zhombie:q19.domain:1.5.3'
+    implementation 'com.github.zhombie:q19.domain:1.5.5'
 
     // OkHTTPClient
-    api 'com.squareup.okhttp3:okhttp:4.9.2'
+    api 'com.squareup.okhttp3:okhttp:4.9.3'
 
     // Socket.io
     api ('io.socket:socket.io-client:1.0.1') {
