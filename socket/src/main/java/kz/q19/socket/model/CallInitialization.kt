@@ -1,6 +1,6 @@
 package kz.q19.socket.model
 
-import kz.q19.domain.model.call.CallType
+import kz.q19.domain.model.call.type.CallType
 import kz.q19.domain.model.geo.Location
 import kz.q19.domain.model.language.Language
 

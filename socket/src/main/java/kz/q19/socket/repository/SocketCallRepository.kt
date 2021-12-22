@@ -1,7 +1,7 @@
 package kz.q19.socket.repository
 
-import kz.q19.domain.model.message.CallAction
-import kz.q19.domain.model.message.QRTCAction
+import kz.q19.domain.model.message.call.CallAction
+import kz.q19.domain.model.message.qrtc.QRTCAction
 import kz.q19.domain.model.webrtc.IceCandidate
 import kz.q19.domain.model.webrtc.SessionDescription
 import kz.q19.socket.model.CallInitialization
