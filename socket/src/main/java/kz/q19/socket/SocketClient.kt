@@ -323,9 +323,19 @@ class SocketClient private constructor() : SocketRepository {
                 })
             }
 
+            putIfValueNotNull("first_name", callInitialization.firstName)
+            putIfValueNotNull("last_name", callInitialization.lastName)
+            putIfValueNotNull("patronymic", callInitialization.patronymic)
+            putIfValueNotNull("iin", callInitialization.iin)
+            putIfValueNotNull("phone", callInitialization.phone)
+
             putIfValueNotNull("service_code", callInitialization.serviceCode)
 
-            put("lang", callInitialization.language.key)
+            putIfValueNotNull("action", callInitialization.action)
+
+            if (callInitialization.language != null) {
+                put("lang", callInitialization.language.key)
+            }
         }) {}
     }
 

@@ -11,8 +11,14 @@ data class CallInitialization constructor(
     val topic: String? = null,
     val location: Location? = null,
     val device: Device? = null,
+    val iin: String? = null,
+    val phone: String? = null,
+    val lastName: String? = null,
+    val firstName: String? = null,
+    val patronymic: String? = null,
     val serviceCode: String? = null,
-    val language: Language
+    val action: String? = null,
+    val language: Language? = null
 ) {
 
     data class Device constructor(
