@@ -1,8 +1,5 @@
 package kz.q19.socket.model
 
-import androidx.annotation.Keep
-
-@Keep
 class Sender private constructor(
     private val sender: String,
     val delimiter: String = DEFAULT_DELIMITER

@@ -4,6 +4,7 @@ import kz.q19.socket.listener.*
 
 interface SocketListenerRepository {
     fun setSocketStateListener(listener: SocketStateListener?)
+    fun setCoreListener(listener: CoreListener?)
     fun setChatBotListener(listener: ChatBotListener?)
     fun setCallListener(listener: CallListener?)
     fun setFormListener(listener: FormListener?)

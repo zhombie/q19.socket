@@ -1,7 +1,7 @@
 package kz.q19.socket.listener
 
+import kz.garage.chat.model.Message
 import kz.q19.domain.model.form.Form
-import kz.q19.domain.model.message.Message
 
 interface FormListener {
     fun onFormInit(form: Form)

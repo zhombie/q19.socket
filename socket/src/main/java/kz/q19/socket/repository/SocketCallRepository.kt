@@ -16,5 +16,5 @@ interface SocketCallRepository {
     fun sendLocalSessionDescription(sessionDescription: SessionDescription)
     fun sendLocalIceCandidate(iceCandidate: IceCandidate)
 
-    fun sendUserCallFeedback(rating: Int, chatId: Long)
+    fun sendUserCallFeedback(chatId: Long, rating: Int)
 }

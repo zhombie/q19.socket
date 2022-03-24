@@ -1,4 +1,4 @@
-package kz.q19.socket.utils
+package kz.q19.socket.core.logger
 
 import android.util.Log
 import kz.q19.socket.SocketClientConfig

@@ -4,7 +4,7 @@ import kz.q19.domain.model.language.Language
 
 object SocketClientConfig {
 
-    private var isLoggingEnabled: Boolean = true
+    private var isLoggingEnabled: Boolean = false
     private var language: Language = Language.DEFAULT
 
     fun init(isLoggingEnabled: Boolean, language: Language) {

@@ -1,9 +1,7 @@
 package kz.q19.socket.model
 
-import androidx.annotation.Keep
 import kz.q19.domain.model.language.Language
 
-@Keep
 data class Category constructor(
     val id: Long,
     val title: String? = null,
@@ -20,8 +18,9 @@ data class Category constructor(
         const val NO_PARENT_ID: Long = 0L
     }
 
-    @Keep
-    data class Config constructor(val order: Int)
+    data class Config constructor(
+        val order: Int
+    )
 
     override fun equals(other: Any?): Boolean {
         if (other == null) return false

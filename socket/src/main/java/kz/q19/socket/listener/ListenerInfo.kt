@@ -1,6 +1,6 @@
 package kz.q19.socket.listener
 
-import kz.q19.socket.utils.Logger
+import kz.q19.socket.core.logger.Logger
 
 internal class ListenerInfo {
 
@@ -9,6 +9,7 @@ internal class ListenerInfo {
     }
 
     var socketStateListener: SocketStateListener? = null
+    var coreListener: CoreListener? = null
     var chatBotListener: ChatBotListener? = null
     var callListener: CallListener? = null
     var formListener: FormListener? = null
@@ -20,6 +21,7 @@ internal class ListenerInfo {
         Logger.debug(TAG, "clear()")
 
         socketStateListener = null
+        coreListener = null
         chatBotListener = null
         callListener = null
         formListener = null

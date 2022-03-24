@@ -1,13 +1,13 @@
 package kz.q19.socket.model
 
-import kz.q19.domain.model.media.Media
+import kz.garage.multimedia.store.model.Content
 
 data class TaskMessage constructor(
     val id: Long,
     val notification: Notification,
     val task: Task,
     val text: String? = null,
-    val media: Media? = null
+    val contents: List<Content>? = null
 ) {
 
     data class Notification constructor(
