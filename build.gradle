@@ -125,7 +125,9 @@ subprojects { project ->
                 }
 
                 afterEvaluate {
-                    artifact "$buildDir/outputs/aar/$project.name-release.aar"
+                    artifact ("$buildDir/outputs/aar/${project.name}-release.aar") {
+                        builtBy assemble
+                    }
                 }
             }
         }
