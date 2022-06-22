@@ -650,17 +650,20 @@ class SocketClient private constructor() : SocketRepository {
 
             Logger.debug(TAG, "[${SocketEvent.Incoming.OPERATOR_GREET}] data: $data")
 
-//        val name = data.optString("name")
-            val fullName = data.optString("full_name")
-
-            // Url path
-            val photo = data.optString("photo")
-
-            val text = data.optString("text")
-
-//            Logger.debug(TAG, "listenerInfo.callListener: ${listenerInfo.callListener}")
-
-            listenerInfo.callListener?.onCallAgentGreet(fullName, photo, text)
+            listenerInfo.callListener?.onCallAgentGreet(
+                Greeting(
+                    callAgent = Greeting.CallAgent(
+                        name = data.optString("name"),
+                        fullName = data.optString("full_name"),
+                        photoUrl = data.getStringOrNull("photo"),
+                        audioStreamEnabled = data.getBooleanOrNull("audio_stream_enabled")
+                            ?: true,
+                        videoStreamEnabled = data.getBooleanOrNull("video_stream_enabled")
+                            ?: true,
+                    ),
+                    text = data.optString("text")
+                )
+            )
         }
     }
 
