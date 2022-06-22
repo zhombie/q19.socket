@@ -8,6 +8,7 @@ import kz.q19.socket.model.CallInitialization
 
 interface SocketCallRepository {
     fun sendCallInitialization(callInitialization: CallInitialization)
+    fun sendCallReinitialization(callInitialization: CallInitialization)
 
     fun sendPendingCallCancellation()
 

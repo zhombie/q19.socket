@@ -17,7 +17,6 @@ data class CallInitialization constructor(
     val firstName: String? = null,
     val patronymic: String? = null,
     val serviceCode: String? = null,
-    val action: String? = null,
     val language: Language? = null
 ) {
 

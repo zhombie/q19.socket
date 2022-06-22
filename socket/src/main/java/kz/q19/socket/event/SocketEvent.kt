@@ -40,6 +40,7 @@ internal sealed class SocketEvent {
         const val FORM_FINAL = "form_final"
 
         const val INITIALIZE = "initialize"
+        const val REINITIALIZE = "reinitialize"
 
         const val LOCATION_SUBSCRIBE = "location_subscribe"
         const val LOCATION_UNSUBSCRIBE = "location_unsubscribe"

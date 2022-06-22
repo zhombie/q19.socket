@@ -6,6 +6,7 @@ import io.socket.client.Ack
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.emitter.Emitter
+import kz.garage.chat.model.Entity
 import kz.garage.chat.model.Message
 import kz.garage.chat.model.reply_markup.InlineReplyMarkup
 import kz.garage.chat.model.reply_markup.ReplyMarkup
@@ -29,13 +30,13 @@ import kz.q19.domain.model.language.Language
 import kz.q19.domain.model.message.call.CallAction
 import kz.q19.domain.model.message.qrtc.QRTCAction
 import kz.q19.domain.model.webrtc.*
+import kz.q19.socket.core.logger.Logger
 import kz.q19.socket.emitter.JSONArrayListener
 import kz.q19.socket.emitter.JSONObjectListener
 import kz.q19.socket.event.SocketEvent
 import kz.q19.socket.listener.*
 import kz.q19.socket.model.*
 import kz.q19.socket.repository.SocketRepository
-import kz.q19.socket.core.logger.Logger
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
@@ -288,7 +289,17 @@ class SocketClient private constructor() : SocketRepository {
     override fun sendCallInitialization(callInitialization: CallInitialization) {
         Logger.debug(TAG, "sendCallInitialization() -> $callInitialization")
 
-        emit(SocketEvent.Outgoing.INITIALIZE, jsonObject {
+        call(SocketEvent.Outgoing.INITIALIZE, callInitialization)
+    }
+
+    override fun sendCallReinitialization(callInitialization: CallInitialization) {
+        Logger.debug(TAG, "sendCallReinitialization() -> $callInitialization")
+
+        call(SocketEvent.Outgoing.REINITIALIZE, callInitialization)
+    }
+
+    private fun call(event: String, callInitialization: CallInitialization) {
+        emit(event, jsonObject {
             when (callInitialization.callType) {
                 CallType.TEXT -> {
                     // Ignored
@@ -339,7 +350,7 @@ class SocketClient private constructor() : SocketRepository {
 
             putIfValueNotNull("service_code", callInitialization.serviceCode)
 
-            putIfValueNotNull("action", callInitialization.action)
+//            putIfValueNotNull("action", "redial")
 
             if (callInitialization.language != null) {
                 put("lang", callInitialization.language.key)
@@ -469,7 +480,7 @@ class SocketClient private constructor() : SocketRepository {
         }) {}
     }
 
-    override fun sendUserLocation(id: String, location: Location) {
+    override fun sendUserLocation(id: String?, location: Location) {
         Logger.debug(TAG, "sendUserLocation() -> location: $location")
 
         emit(SocketEvent.Outgoing.MESSAGE, jsonObject {
@@ -874,7 +885,7 @@ class SocketClient private constructor() : SocketRepository {
             }
 
             val message = Message.Builder()
-                .setId(id)
+                .setId(id ?: Entity.generateId())
                 .setIncomingDirection()
                 .setCreatedAt(time)
                 .setBody(text)
